@@ -1,0 +1,103 @@
+question_number_in_dataset,section,question,thinking_content,raw_content_after_thinking,parsed_answer_index,correct_answer_index,correct
+1,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu cümlede boş bırakılan yerlere sırasıyla aşağıdakilerden hangisi getirilmelidir?,"<think>
+Okay, let's tackle this question. The passage is about Kant's ""Analytic of Aesthetics"" and his arguments regarding the judgment of beauty. The sentence has two blanks that need to be filled. The first blank is after ""beğeni yargısının"" (the judgment of taste), and the second is after ""ikinci olarak da"" (secondly, also).
+
+First, I need to recall Kant's views on aesthetic judgment. Kant distinguishes between aesthetic judgment and moral judgment. He argues that aesthetic judgment is subjective yet universal. The first part of the sentence says that Kant first shows that the judgment of taste is not purposive, meaning it's not about achieving a goal. So the first blank should be something like ""istemsizliğini"" (its aimlessness) because aesthetic judgment isn't about purpose. 
+
+The second part mentions that the judgment of beauty is based on a common human trait. Kant talks about the universality of aesthetic judgment, so the second blank should be ""evrenselliğini"" (its universality). 
+
+Looking at the choices, option 1 is ""istemsizliğini - evrenselliğini,"" which matches my reasoning. Let me check the other options to be sure. Option 0 mentions ""öznelliğini"" (subjectivity) and ""sistemini"" (system), which doesn't fit. Option 2 talks about ""güçlüğünü"" (difficulty) and ""estetiğini"" (aesthetics), which isn't right. Option 3 has ""aykırılığını"" (contrariety) and ""özgünlüğünü"" (originality), which don't align. Option 4 is ""karmaşıklığını"" (complexity) and ""niteliğini"" (quality), which also doesn't fit. So the correct answer should be 1.
+</think>",1,1,1,true
+2,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu parçada numaralanmış cümlelerle ilgili aşağıdakilerden hangisi yanlıştır?,"<think>
+Okay, let's tackle this question. The user wants to know which of the given choices is incorrect based on the passage. Let me start by carefully reading the passage and then analyzing each option one by one.
+
+First, the passage has five numbered sentences. The question is about which statement regarding these sentences is false. The choices are 0 to 4, each referring to a different sentence.
+
+Let me break down each sentence:
+
+I. When Kepler mathematically confirmed that Earth moves and planetary orbits are elliptical, a new era began in celestial mechanics.
+II. After that, there was a need for mathematical findings to be verified by observational data, i.e., having empirical evidence.
+III. Galileo, who had long been aware of these developments and closely followed Kepler's work, was in agreement with this view.
+IV. When he heard that the newly invented telescope could magnify objects, he immediately bought one.
+V. After carefully examining the telescope with limited magnification, he built his own telescope and gifted it to the intellectuals of his time.
+
+Now, let's check each choice against the sentences.
+
+Choice 0 says that sentence I talks about a significant scientific development. Looking at sentence I, it does mention Kepler's mathematical confirmation leading to a new era in celestial mechanics. That's a significant development, so choice 0 is correct. So the statement in choice 0 is true, so it's not the incorrect one.
+
+Choice 1 states that sentence II indicates the need for verification of the idea from sentence I. Sentence II says that after that stage, mathematical findings needed to be verified by observational data. This seems to follow from sentence I, which introduced a new era. So choice 1 is correct. Therefore, choice 1 is not the incorrect one.
+
+Choice 2 claims that sentence III mentions another scientist adopting the situation from sentence I. Sentence III says Galileo, who was aware of the developments and followed Kepler, was in agreement. So yes, another scientist (Galileo) adopting the view from sentence I. So choice 2 is correct. Thus, choice 2 is not the incorrect one.
+
+Choice 3 says that sentence IV provides brief information about the function of a newly invented object. Sentence IV mentions that the telescope could magnify objects, which is its function. The sentence is brief, so choice 3 is correct. Therefore, choice 3 is not the incorrect one.
+
+Choice 4 states that sentence V mentions the purpose of the invention made by a scientist. Sentence V says Galileo built his own telescope and gifted it to intellectuals. The text doesn't mention the design purpose of the telescope; it just says he made one and gave it away. The purpose here is more about sharing the tool rather than the design's intention. So choice 4 is incorrect because it's not about the design purpose but the act of sharing. Therefore, choice 4 is the false statement.
+</think>",4,4,4,true
+3,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu parçadan aşağıdakilerin hangisine ulaşılabilir?,"<think>
+Okay, let's tackle this question. The passage is about how life is like a theater, and we all play roles on our own stage. It mentions that we decide what to present to the audience (which is society) and sometimes we act as if we're doing things instead of actually doing them. This struggle between ""doing"" and ""appearing to do"" shapes our personality. The Latin term ""persona,"" meaning mask, is used here, implying that we wear masks to fit societal expectations.
+
+Now, the question asks which conclusion can be drawn from the passage. Let's look at the choices:
+
+0. People sacrifice their personality to play the roles society expects. The passage says we wear masks, but it doesn't explicitly say they sacrifice their true self. It's more about presenting a facade rather than giving up their personality entirely.
+
+1. People find their identity in the conflict between inner conflict and societal expectations. The passage talks about the struggle between ""doing"" and ""appearing,"" which relates to inner conflict and societal pressures. This seems possible.
+
+2. People imitate others as role models. The passage doesn't mention role models or imitating others, so this might not be right.
+
+3. Those who present their feelings and thoughts according to societal expectations leave a good impression. The passage does mention presenting things to the audience (society) and the idea of appearing to do things. However, the focus is more on the struggle and how this shapes personality, not necessarily about leaving a good impression.
+
+4. Determining the correctness of behaviors that result from a balance effort is difficult. The passage doesn't discuss evaluating the correctness of behaviors, so this seems off.
+
+So, choice 1 seems to align with the idea of inner conflict (the struggle between real actions and appearances) and societal expectations (the audience's expectations). The passage emphasizes that this process shapes our personality, which matches the idea of finding identity in that conflict. Therefore, the correct answer is 1.
+</think>",1,1,1,true
+4,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu parçanın yazarıyla ilgili aşağıdakilerden hangisi söylenebilir?,"<think>
+Okay, let's tackle this question. The passage is about the almond paste test used to detect Alzheimer's. The main points are that the test involves smelling almond paste, measuring the distance at which patients can detect the smell, and finding that Alzheimer's patients have reduced olfactory ability in their left nostril. The author mentions that smell is one of the first senses affected in cognitive impairments and that this test could make diagnosing Alzheimer's easier.
+
+Now, the question is asking what can be said about the author based on the passage. The choices are 0 to 4. Let's look at each option:
+
+0. Talks about processed foods' role in neurological diseases. The passage doesn't mention processed foods, so this is probably not correct.
+
+1. Mentions scientific debates related to the topic. The passage presents a study from Florida University but doesn't discuss debates or differing opinions, so maybe not.
+
+2. Examines the characteristics of Alzheimer's patients in detail. The passage does describe some characteristics (like olfactory issues), but the focus is more on the test's methodology and its implications for diagnosis rather than detailed patient characteristics.
+
+3. Emphasizes the importance of a sensory function loss in Alzheimer's diagnosis. The passage highlights that smell loss is an early sign and that the test uses this to aid diagnosis. This seems to align with option 3.
+
+4. Draws attention to alternative methods in Alzheimer's treatment. The passage is about diagnosis, not treatment, so this is incorrect.
+
+So the correct answer should be 3. The author is emphasizing how a sensory impairment (smell) is important in diagnosing Alzheimer's, which matches choice 3.
+</think>",3,3,3,true
+5,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu parçada söz edilen hafıza geliştirme programıyla ilgili aşağıdakilerin hangisi söylenebilir?,"<think>
+Okay, let's tackle this question. The passage is about a memory development program that's entirely online and aims to improve working memory through a game software. The key points here are that the program targets working memory, uses a game format, and previous studies show that regular intense use can enhance memory mechanisms and problem-solving. The last sentence mentions that if the program is successful, it might be used to treat learning disorders, age-related memory issues, attention deficits, and ADHD.
+
+Now, looking at the choices:
+
+0. It says the program might undermine previous research results. But the passage doesn't mention anything about contradicting past studies. Instead, it references previous studies as supporting the approach. So 0 is probably wrong.
+
+1. This choice claims the program aims to update many known internet games. The passage mentions the program is a game-based software, but there's no mention of updating existing games. So 1 seems incorrect.
+
+2. This states that it's expected to contribute to treating some brain-related disorders. The last sentence directly mentions that if successful, the program could be used for learning disorders, age-related memory problems, attention issues, and ADHD. So 2 looks correct.
+
+3. This talks about focusing on updating educational designs. The passage doesn't mention education or updating educational models. The focus is on memory training, not education. So 3 is not right.
+
+4. This mentions developing software tailored for different age groups based on learning abilities. The passage doesn't specify age groups or customization for different learning abilities. It's more about general memory improvement. So 4 is incorrect.
+
+Therefore, the correct answer should be 2.
+</think>",2,2,2,true
+6,TURK-DILI-VE-EDEBIYATI-SOSYAL-BILIMLER-1-TESTI,Bu parçada güvercinlerle ilgili aşağıdakilerin hangisine değinilmemiştir?,"<think>
+Okay, let's tackle this question. The passage is about pigeons and their abilities. The question asks which of the options is not mentioned in the text.
+
+First, I'll go through each choice one by one. 
+
+Choice 0 says ""their training processes are effortless."" The passage mentions that pigeons can be trained with ""az bir çabayla"" which translates to ""with little effort."" So that's covered. So 0 is mentioned.
+
+Choice 1: ""They can maintain their existence in different regions."" The first sentence says they can survive in geographically opposite conditions. So yes, that's mentioned. So 1 is covered.
+
+Choice 2: ""They are used for communication purposes."" The text says that even today, pigeons are used for messaging, especially in areas where phones don't work. So 2 is mentioned.
+
+Choice 3: ""They have strong social bonds within themselves."" Hmm, the passage talks about their homing ability, their use in messaging, and their ability to navigate using the Earth's magnetic field. But there's no mention of social bonds between pigeons. The text doesn't discuss their interactions with each other beyond their navigational skills and being trained. So this might be the one not mentioned.
+
+Choice 4: ""The source of their success in navigation."" The passage mentions they use the Earth's magnetic field to navigate, so that's directly addressed. So 4 is covered.
+
+Therefore, the answer should be 3 because the passage doesn't talk about their social bonds.
+</think>",3,3,3,true
