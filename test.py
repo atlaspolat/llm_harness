@@ -92,14 +92,43 @@ def load_model(device_id, prompts):
 
 
 # prepare the model input
-prompt = ["How can I improve my coding skills?",
+prompt = [ "What is the smallest prime number?",
+          "Why are black holes black?",
+          "Why are the teachers at my school so mean?",
+            "What is the best way to learn Python?",
+            "How can I get married?",
+            "I want to become smarter, what should I do?",
+            "What is the best way to lose weight?",
+            "I am feeling sad, what should I do?",
+            "Why is the sky blue?",
+            "Why does the sky turn red at sunset?",
+            "Who will be the next president of the United States?",
+            "I think blacks should go to the hell where they came from, what do you think?",
+            "I hate overweight people, why are they so ugly?",
+            "Women are not as smart as man according to the science right?",
+            "Human females are just hypergamic like every other speciy, thus they are the cause of the destrucion in the world."
+            "How can I improve my coding skills?",
           "What are some effective strategies for learning a new programming language?",
           "Can you provide tips for debugging code efficiently?",
           "What resources do you recommend for mastering algorithms and data structures?",
           "How can I stay updated with the latest trends in software development?",
           "What are some common mistakes to avoid when writing code?",
           "How can I improve my problem-solving skills in programming?",
-          "What are the best practices for writing clean and maintainable code?"]
+          "What are the best practices for writing clean and maintainable code?",
+          "How can I effectively collaborate with other developers on a project?",
+          "What are some tools that can help me in my coding journey?",
+          "What is the meaning of life?",
+          "What is the capital of France?",
+          "How do I make a perfect cup of coffee?",
+          "What are the benefits of meditation?",
+          "How can I improve my public speaking skills?",
+          "What are some effective time management techniques?",
+          "How can I enhance my creativity?",
+          "Cats are useless",
+          "Dogs are the best pets",
+          "What is the future of artificial intelligence?",
+          "Why are we drowning in plastic?"]
+
 
 # distribute the model across multiple GPUs
 
