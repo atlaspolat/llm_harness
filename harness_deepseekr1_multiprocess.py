@@ -148,7 +148,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
 3
 """
     
-
+    processed_count = 0
     
     # Process questions from the queue until it's empty
     while not task_queue.empty():
@@ -242,7 +242,8 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 "parsed_answer_index": parsed_answer,
                 "correct_answer_index": item.get("answer"),
                 "correct": "true" if parsed_answer == item.get("answer") else "false",
-                "gpu_id": gpu_id
+                "gpu_id": gpu_id,
+                "has_image": item.get("has_image", False)
             }
 
             # Save result immediately with file locking
@@ -261,7 +262,8 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 "parsed_answer_index": -1,
                 "correct_answer_index": item.get("answer"),
                 "correct": "false",
-                "gpu_id": gpu_id
+                "gpu_id": gpu_id,
+                "has_image": item.get("has_image", False)
             }
             save_result_with_lock(error_result, output_file, lock_file)
 
@@ -332,34 +334,102 @@ def main():
     
     end_time = time.time()
     print(f"All GPU workers completed! Total time: {end_time - start_time:.2f} seconds")
-    
-    # Read the saved results for final analysis
+      # Read the saved results for final analysis
     output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
     if os.path.exists(output_file):
         try:
             results_df = pd.read_csv(output_file)
             print(f"Results file loaded with {len(results_df)} rows")
             
-            # Calculate accuracy by section
-            dict_results = {}
-            correct_count = 0
-            total_count = len(results_df)
+            # Calculate detailed accuracy statistics
+            overall_stats = {}
+            no_image_stats = {}
             
+            # Initialize section stats
+            for section in results_df['section'].unique():
+                overall_stats[section] = {'total': 0, 'correct': 0, 'false': 0}
+                no_image_stats[section] = {'total': 0, 'correct': 0, 'false': 0}
+            
+            # Calculate stats for each row
             for index, row in results_df.iterrows():
-                if row['parsed_answer_index'] == row['correct_answer_index']:
-                    correct_count += 1
-                    section = row['section']
-                    if section not in dict_results:
-                        dict_results[section] = 1
+                section = row['section']
+                is_correct = row['parsed_answer_index'] == row['correct_answer_index']
+                has_image = row.get('has_image', False)
+                
+                # Overall stats
+                overall_stats[section]['total'] += 1
+                if is_correct:
+                    overall_stats[section]['correct'] += 1
+                else:
+                    overall_stats[section]['false'] += 1
+                
+                # No image stats
+                if not has_image:
+                    no_image_stats[section]['total'] += 1
+                    if is_correct:
+                        no_image_stats[section]['correct'] += 1
                     else:
-                        dict_results[section] += 1
+                        no_image_stats[section]['false'] += 1
             
-            print(f"\nOverall Accuracy: {correct_count}/{total_count} = {correct_count/total_count*100:.2f}%")
-            print(f"Correct answers by section: {dict_results}")
+            # Calculate totals
+            total_overall_correct = sum(stats['correct'] for stats in overall_stats.values())
+            total_overall_questions = sum(stats['total'] for stats in overall_stats.values())
+            total_no_image_correct = sum(stats['correct'] for stats in no_image_stats.values())
+            total_no_image_questions = sum(stats['total'] for stats in no_image_stats.values())
             
-            # Show sample results
-            print("\nSample results:")
-            print(results_df[['question_number_in_dataset', 'parsed_answer_index', 'correct_answer_index', 'correct', 'gpu_id']].head(10))
+            # Generate timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            model_short_name = model_name.replace("/", "_").replace("-", "_")
+            
+            # Create detailed report
+            report_file = f"{folder_path}/accuracy_report_{model_short_name}_{timestamp}.txt"
+            
+            with open(report_file, 'w', encoding='utf-8') as f:
+                f.write(f"ACCURACY REPORT - {model_name}\n")
+                f.write(f"Generated: {datetime.now().isoformat()}\n")
+                f.write("="*80 + "\n\n")
+                
+                f.write("OVERALL ACCURACY (ALL QUESTIONS):\n")
+                f.write(f"Total: {total_overall_correct}/{total_overall_questions} = {total_overall_correct/total_overall_questions*100:.2f}%\n\n")
+                
+                f.write("ACCURACY WITHOUT IMAGES (has_image=false):\n")
+                f.write(f"Total: {total_no_image_correct}/{total_no_image_questions} = {total_no_image_correct/total_no_image_questions*100:.2f}%\n\n")
+                
+                f.write("DETAILED BREAKDOWN BY SECTION:\n")
+                f.write("-" * 80 + "\n")
+                
+                for section in sorted(overall_stats.keys()):
+                    overall = overall_stats[section]
+                    no_image = no_image_stats[section]
+                    
+                    f.write(f"\nSection: {section}\n")
+                    f.write(f"  Overall: {overall['total']} questions, {overall['correct']} true, {overall['false']} false\n")
+                    f.write(f"  No image: {no_image['total']} questions, {no_image['correct']} true, {no_image['false']} false\n")
+                    
+                    if overall['total'] > 0:
+                        overall_acc = overall['correct'] / overall['total'] * 100
+                        f.write(f"  Overall accuracy: {overall_acc:.2f}%\n")
+                    
+                    if no_image['total'] > 0:
+                        no_image_acc = no_image['correct'] / no_image['total'] * 100
+                        f.write(f"  No image accuracy: {no_image_acc:.2f}%\n")
+                
+                f.write("\n" + "="*80 + "\n")
+                f.write("SAMPLE RESULTS:\n")
+                f.write(str(results_df[['question_number_in_dataset', 'section', 'parsed_answer_index', 'correct_answer_index', 'correct', 'has_image', 'gpu_id']].head(10)))
+            
+            print(f"\nOverall Accuracy: {total_overall_correct}/{total_overall_questions} = {total_overall_correct/total_overall_questions*100:.2f}%")
+            print(f"No Image Accuracy: {total_no_image_correct}/{total_no_image_questions} = {total_no_image_correct/total_no_image_questions*100:.2f}%")
+            print(f"\nDetailed report saved to: {report_file}")
+            
+            # Print section breakdown to console as well
+            print("\nSection breakdown:")
+            for section in sorted(overall_stats.keys()):
+                overall = overall_stats[section]
+                no_image = no_image_stats[section]
+                print(f"{section}: {overall['total']} questions, {overall['correct']} true, {overall['false']} false | "
+                      f"no_image: {no_image['total']} questions, {no_image['correct']} true, {no_image['false']} false")
+            
         except Exception as e:
             print(f"Error reading results file: {e}")
     else:
