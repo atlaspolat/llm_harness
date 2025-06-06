@@ -23,7 +23,7 @@ folder_path = f'/kuacc/users/apolat21/lm_harness_results/{model_name}'
 # load the tokenizer and the model
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(
-    model_path,
+    model_name,
     torch_dtype="auto",
     device_map="auto"
 )
