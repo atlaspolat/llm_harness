@@ -54,14 +54,13 @@ def save_result_with_lock(result, output_file, lock_file):
                     # Add timestamp to result
                     result_with_timestamp = result.copy()
                     result_with_timestamp['timestamp'] = datetime.now().isoformat()
-                    
-                    # Open file in append mode
+                      # Open file in append mode
                     with open(output_file, 'a', newline='', encoding='utf-8') as csvfile:
                         fieldnames = [
                             'question_number_in_dataset', 'section', 'question', 
                             'thinking_content', 'raw_content_after_thinking', 
                             'parsed_answer_index', 'correct_answer_index', 
-                            'correct', 'gpu_id', "has_image" 'timestamp'
+                            'correct', 'gpu_id', "has_image", 'timestamp'
                         ]
                         
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
