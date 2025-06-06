@@ -7,6 +7,11 @@ import torch
 import time
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing as mp
+import csv
+import fcntl  # For file locking on Unix systems
+import threading
+from pathlib import Path
+from datetime import datetime
 
 def print_gpu_diagnostics():
     """Print GPU diagnostics for the current process"""
@@ -25,6 +30,84 @@ def print_gpu_diagnostics():
             props = torch.cuda.get_device_properties(i)
             print(f"GPU {i}: {props.name} ({props.total_memory / 1e9:.1f} GB)")
     print("="*60)
+
+def save_result_with_lock(result, output_file, lock_file):
+    """Save a single result to CSV file with file locking"""
+    import time
+    import random
+    
+    max_retries = 20
+    base_delay = 0.1
+    
+    for attempt in range(max_retries):
+        try:
+            # Create lock file directory if it doesn't exist
+            os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+            
+            # Try to acquire lock with timeout
+            lock_acquired = False
+            lock_fd = None
+            
+            try:
+                # Open lock file
+                lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+                lock_acquired = True
+            except FileExistsError:
+                # Lock file exists, wait and retry
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 0.1)
+                time.sleep(delay)
+                continue
+            
+            if lock_acquired:
+                try:
+                    # Check if CSV file exists and needs header
+                    file_exists = Path(output_file).exists()
+                    
+                    # Add timestamp to result
+                    result_with_timestamp = result.copy()
+                    result_with_timestamp['timestamp'] = datetime.now().isoformat()
+                    
+                    # Open file in append mode
+                    with open(output_file, 'a', newline='', encoding='utf-8') as csvfile:
+                        fieldnames = [
+                            'question_number_in_dataset', 'section', 'question', 
+                            'thinking_content', 'raw_content_after_thinking', 
+                            'parsed_answer_index', 'correct_answer_index', 
+                            'correct', 'gpu_id', 'timestamp'
+                        ]
+                        
+                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                        
+                        # Write header if file is new
+                        if not file_exists:
+                            writer.writeheader()
+                        
+                        # Write the result
+                        writer.writerow(result_with_timestamp)
+                        csvfile.flush()  # Ensure data is written
+                    
+                    print(f"[GPU {result.get('gpu_id', '?')}] Result saved to {output_file}")
+                    return True
+                    
+                finally:
+                    # Release lock
+                    if lock_fd is not None:
+                        os.close(lock_fd)
+                        try:
+                            os.unlink(lock_file)
+                        except FileNotFoundError:
+                            pass  # Already removed
+            
+        except Exception as e:
+            print(f"[GPU {result.get('gpu_id', '?')}] Error saving result (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt) + random.uniform(0, 0.1)
+                time.sleep(delay)
+            else:
+                print(f"[GPU {result.get('gpu_id', '?')}] Failed to save result after {max_retries} attempts")
+                return False
+    
+    return False
 
 def process_questions_on_gpu(args):
     """Worker function that processes a batch of questions on a specific GPU"""
@@ -53,6 +136,10 @@ def process_questions_on_gpu(args):
     
     print(f"[GPU {device_id}] Model loaded! Processing {len(question_batch)} questions...")
     
+    # Set up output files
+    output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
+    lock_file = f"{folder_path}/save_lock.txt"
+    
     # Define the system prompt
     turkish_instruction = "Parçaya ve soruya göre hangi seçenek doğrudur? Cevabınız sadece seçeneğin indeksine karşılık gelen tek bir rakam (0, 1, 2, 3 veya 4) olmalıdır."
     
@@ -77,7 +164,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
 3
 """
     
-    results_list = []
+    processed_count = 0
     
     for i, item in enumerate(question_batch):
         question_text = item.get("question", "")
@@ -117,7 +204,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
             with torch.no_grad():
                 generated_ids = model.generate(
                     **model_inputs,
-                    max_new_tokens=4096,  # Reduced for better performance
+                    max_new_tokens=16384,  # Reduced for better performance
                     pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
                 )
 
@@ -154,7 +241,8 @@ Your Output Example (after your thinking process, which should be enclosed in <t
 
             print(f"[GPU {device_id}] Question {i+1} - Parsed: {parsed_answer}, Correct: {item.get('answer')}")
 
-            results_list.append({
+            # Create result dictionary
+            result = {
                 "question_number_in_dataset": item.get("question_number"),
                 "section": item.get("section"),
                 "question": question_text,
@@ -164,20 +252,34 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 "correct_answer_index": item.get("answer"),
                 "correct": "true" if parsed_answer == item.get("answer") else "false",
                 "gpu_id": device_id
-            })
+            }
+
+            # Save result immediately with file locking
+            save_success = save_result_with_lock(result, output_file, lock_file)
+            if save_success:
+                processed_count += 1
+            else:
+                print(f"[GPU {device_id}] Failed to save result for question {i+1}")
 
         except Exception as e:
             print(f"[GPU {device_id}] Error processing question {i+1}: {e}")
-            results_list.append({
+            
+            # Save error result
+            error_result = {
                 "question_number_in_dataset": item.get("question_number"),
                 "section": item.get("section"),
                 "question": question_text,
-                "error": str(e),
+                "thinking_content": "",
+                "raw_content_after_thinking": f"ERROR: {str(e)}",
+                "parsed_answer_index": -1,
+                "correct_answer_index": item.get("answer"),
+                "correct": "false",
                 "gpu_id": device_id
-            })
+            }
+            save_result_with_lock(error_result, output_file, lock_file)
 
-    print(f"[GPU {device_id}] Finished processing {len(question_batch)} questions!")
-    return results_list
+    print(f"[GPU {device_id}] Finished processing {len(question_batch)} questions! Saved {processed_count} results.")
+    return processed_count  # Return count instead of results list
 
 def main():
     # Set multiprocessing start method to 'spawn' for CUDA compatibility
@@ -213,7 +315,7 @@ def main():
         return
     
     # For testing, limit to first 50 questions (remove this line for full processing)
-    question_data = question_data[:50]  # Remove this line to process all questions
+    #question_data = question_data[:50]  # Remove this line to process all questions
     
     # Distribute questions among GPUs
     questions_per_gpu = [[] for _ in range(num_gpus)]
@@ -241,14 +343,13 @@ def main():
                 print(f"Submitting GPU {i} task with {len(args[1])} questions to separate process")
                 future = executor.submit(process_questions_on_gpu, args)
                 futures.append((i, future))
-        
-        # Wait for all tasks to complete and collect results
-        all_results = []
+          # Wait for all tasks to complete and collect results
+        total_processed = 0
         for gpu_id, future in futures:
             try:
-                results = future.result()  # This will block until the task completes
-                all_results.extend(results)
-                print(f"GPU {gpu_id} completed its tasks! Processed {len(results)} questions")
+                processed_count = future.result()  # This will block until the task completes
+                total_processed += processed_count
+                print(f"GPU {gpu_id} completed its tasks! Processed {processed_count} questions")
             except Exception as e:
                 print(f"GPU {gpu_id} encountered an error: {e}")
                 import traceback
@@ -256,38 +357,39 @@ def main():
     
     end_time = time.time()
     print(f"All GPUs completed! Total time: {end_time - start_time:.2f} seconds")
-    print(f"Total questions processed: {len(all_results)}")
+    print(f"Total questions processed: {total_processed}")
     
-    # Convert results to DataFrame and save
-    if all_results:
-        results_df = pd.DataFrame(all_results)
-        
-        # Save results
-        output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
-        results_df.to_csv(output_file, index=False)
-        print(f"Results saved to: {output_file}")
-        
-        # Calculate accuracy by section
-        dict_results = {}
-        correct_count = 0
-        total_count = len(results_df)
-        
-        for index, row in results_df.iterrows():
-            if row['parsed_answer_index'] == row['correct_answer_index']:
-                correct_count += 1
-                section = row['section']
-                if section not in dict_results:
-                    dict_results[section] = 1
-                else:
-                    dict_results[section] += 1
-        
-        print(f"\nOverall Accuracy: {correct_count}/{total_count} = {correct_count/total_count*100:.2f}%")
-        print(f"Correct answers by section: {dict_results}")
-        
-        # Show sample results
-        print("\nSample results:")
-        print(results_df[['question_number_in_dataset', 'parsed_answer_index', 'correct_answer_index', 'correct', 'gpu_id']].head(10))
+    # Read the saved results for final analysis
+    output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
+    if os.path.exists(output_file):
+        try:
+            results_df = pd.read_csv(output_file)
+            print(f"Results file loaded with {len(results_df)} rows")
+            
+            # Calculate accuracy by section
+            dict_results = {}
+            correct_count = 0
+            total_count = len(results_df)
+            
+            for index, row in results_df.iterrows():
+                if row['parsed_answer_index'] == row['correct_answer_index']:
+                    correct_count += 1
+                    section = row['section']
+                    if section not in dict_results:
+                        dict_results[section] = 1
+                    else:
+                        dict_results[section] += 1
+            
+            print(f"\nOverall Accuracy: {correct_count}/{total_count} = {correct_count/total_count*100:.2f}%")
+            print(f"Correct answers by section: {dict_results}")
+            
+            # Show sample results
+            print("\nSample results:")
+            print(results_df[['question_number_in_dataset', 'parsed_answer_index', 'correct_answer_index', 'correct', 'gpu_id']].head(10))
+        except Exception as e:
+            print(f"Error reading results file: {e}")
     else:
+        print(f"Results file not found: {output_file}")
         print("No results were processed.")
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ def print_gpu_diagnostics():
     print("="*60)
 
 def load_model_and_infer(args):
-    """Worker function that runs in a separate process for each GPU"""
+    """Worker function that runs in a separate process for each GnPU"""
     device_id, prompts, model_path = args
     
     # Print diagnostics for this process
