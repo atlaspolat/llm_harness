@@ -49,6 +49,7 @@ def load_model(device_id, prompts):
 
                     print(f"Processing prompt on GPU {device_id}: {i} - {prompt}")
                     messages = [
+                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                     
                 ]
