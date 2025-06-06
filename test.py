@@ -2,6 +2,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
 
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 # Add this right after your imports to check GPU status
 print("="*60)
 print("GPU DIAGNOSTICS")
@@ -29,66 +32,68 @@ model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'  # Adjust this path
 
 
 def load_model(device_id, prompts):
-
+    # Set the current device for this thread
+    torch.cuda.set_device(device_id)
+    
     # load model for the specific GPU
-    print(f"Loading model on GPU {device_id}...")
+    print(f"[GPU {device_id}] Loading model...")
 
     # load the tokenizer and the model
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        max_length=512,  # Set max length to 32768
         torch_dtype=torch.float16,  # Use float16 for better performance on GPUs
-        device_map=f"cuda:{device_id}",  # Force to specific GPU,  # Force everything to GPU 0 only,
+        device_map=f"cuda:{device_id}",  # Force to specific GPU
         trust_remote_code=True  # Trust remote code for custom model architectures
         )
     
-    for i, prompt in prompts:
-                    
-                # starting to process at a specific GPU
+    print(f"[GPU {device_id}] Model loaded! Processing {len(prompts)} prompts...")
+    
+    for i, prompt in enumerate(prompts):
+                      # starting to process at a specific GPU
+                print(f"[GPU {device_id}] Processing prompt {i+1}/{len(prompts)}: {prompt[:50]}...")
+                messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+                
+            ]
+                text = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
+            )
+                model_inputs = tokenizer([text], return_tensors="pt").to(model.device)                # conduct text completion
+                generated_ids = model.generate(
+                    **model_inputs,
+                        max_new_tokens=2048,  # Reduced from 32768 to avoid memory issues
+                        #temperature=0.1,
+                        do_sample=False,
+                        pad_token_id=tokenizer.eos_token_id
+                        )
+                output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
 
-                    print(f"Processing prompt on GPU {device_id}: {i} - {prompt}")
-                    messages = [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                    
-                ]
-                    text = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                    enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
-                )
-                    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+                # parsing thinking content
+                try:
+                # rindex finding 151668 (</think>)
+                    index = len(output_ids) - output_ids[::-1].index(151668)
+                except ValueError:
+                    index = 0
 
-                # conduct text completion
-                    generated_ids = model.generate(
-                        **model_inputs,
-                            max_new_tokens=32768
-                            )
-                    output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
+                thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+                content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
 
-                    # parsing thinking content
-                    try:
-                    # rindex finding 151668 (</think>)
-                        index = len(output_ids) - output_ids[::-1].index(151668)
-                    except ValueError:
-                        index = 0
+                # save the output to a file
+                with open(f"output_gpu_{device_id}.txt", "a") as f:
+                    f.write(f"Prompt: {prompt}\n")
+                    f.write(f"Thinking Content: {thinking_content}\n")
+                    f.write(f"Content: {content}\n")
+                    f.write("\n" + "="*50 + "\n\n")
 
-                    thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
-                    content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
-
-                    # save the output to a file
-                    with open(f"output_gpu_{device_id}.txt", "a") as f:
-                        f.write(f"Prompt: {prompt}\n")
-                        f.write(f"Thinking Content: {thinking_content}\n")
-                        f.write(f"Content: {content}\n")
-                        f.write("\n" + "="*50 + "\n\n")
-
-                    # Print the work done message
-                    print(f"Work done for prompt on GPU {device_id}:{i} {prompt}")
-                    # Print the output
-                    print(f"Content: {content}")
+                # Print the work done message
+                print(f"[GPU {device_id}] Completed prompt {i+1}: {content[:100]}...")
+                
+    print(f"[GPU {device_id}] Finished all {len(prompts)} prompts!")
 
 
 
@@ -149,9 +154,31 @@ for i, p in enumerate(prompt):
     prompts_per_gpu[i % num_gpus].append(p)
 
 
-# Load and run the model on each GPU
-for i in range(num_gpus):
-    print(f"Loading model on GPU {i} with prompts: {prompts_per_gpu[i]}")
-    load_model(i, prompts_per_gpu[i])
+# Load and run the model on each GPU asynchronously
+def run_parallel_inference():
+    print("Starting parallel inference on all GPUs...")
+    start_time = time.time()
+    
+    with ThreadPoolExecutor(max_workers=num_gpus) as executor:
+        # Submit all GPU tasks to run in parallel
+        futures = []
+        for i in range(num_gpus):
+            print(f"Submitting GPU {i} task with {len(prompts_per_gpu[i])} prompts")
+            future = executor.submit(load_model, i, prompts_per_gpu[i])
+            futures.append(future)
+        
+        # Wait for all tasks to complete
+        for i, future in enumerate(futures):
+            try:
+                future.result()  # This will block until the task completes
+                print(f"GPU {i} completed its tasks!")
+            except Exception as e:
+                print(f"GPU {i} encountered an error: {e}")
+    
+    end_time = time.time()
+    print(f"All GPUs completed! Total time: {end_time - start_time:.2f} seconds")
+
+# Run the parallel inference
+run_parallel_inference()
 
 
