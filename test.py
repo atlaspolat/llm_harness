@@ -1,14 +1,23 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 model_name = "Qwen/Qwen3-8B"
 
-# load the tokenizer and the model
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+# Check if the model is already downloaded 
+# If not, it will download it from the Hugging Face model hub
+
+
+model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'  # Adjust this path if needed
+
+ # load the tokenizer and the model
+tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype="auto",
-    device_map="auto"
-)
+model_path,
+torch_dtype=torch.float16,  # Use float16 for better performance on GPUs
+device_map="auto",
+trust_remote_code=True  # Trust remote code for custom model architectures
+    )
 
 # prepare the model input
 prompt = "How can I improve my coding skills?"
