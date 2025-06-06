@@ -1,5 +1,22 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
+import os
+
+# Add this right after your imports to check GPU status
+print("="*60)
+print("GPU DIAGNOSTICS")
+print("="*60)
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"CUDA version: {torch.version.cuda}")
+print(f"Number of GPUs visible: {torch.cuda.device_count()}")
+print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'Not set')}")
+print(f"SLURM_JOB_ID: {os.environ.get('SLURM_JOB_ID', 'Not set')}")
+
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        props = torch.cuda.get_device_properties(i)
+        print(f"GPU {i}: {props.name} ({props.total_memory / 1e9:.1f} GB)")
+
 
 model_name = "Qwen/Qwen3-8B"
 
