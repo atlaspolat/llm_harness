@@ -13,7 +13,7 @@ print(df.size)
 print(df.head())
 
 
-model_name = "DeepSeek-R1-0528-Qwen3-8B" # Path to the model, can be a local path or a Hugging Face model hub path
+model_name = "Qwen/Qwen3-8B" # Path to the model, can be a local path or a Hugging Face model hub path
 
 model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'  # Adjust this path if needed
 
@@ -21,7 +21,7 @@ folder_path = f'/kuacc/users/apolat21/lm_harness_results/{model_name}'
 
 
 # load the tokenizer and the model
-tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(
     model_path,
     torch_dtype="auto",
