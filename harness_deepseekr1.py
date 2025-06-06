@@ -28,6 +28,24 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"
 )
 
+if True: # If you want to save the model and tokenizer locally
+    # Save the model and tokenizer locally
+    import os
+    
+
+    # check if the model already exists in the model_path
+    if os.path.exists(model_path):
+        print(f"Model already exists at {model_path}. Skipping save.")
+    else:
+        print(f"Model does not exist at {model_path}. Saving model and tokenizer...")
+        os.makedirs(model_path, exist_ok=True)
+        print(f"Saving model to {model_path}...")
+        model.save_pretrained(model_path)
+        tokenizer.save_pretrained(model_path)
+        print(f"Model saved successfully!")
+
+        
+
 results_list = []
 think_token_id = 151668 # </think> token ID for Qwen/Qwen3-8B
 
