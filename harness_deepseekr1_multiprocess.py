@@ -5,11 +5,9 @@ import re # For parsing the final answer
 import os
 import torch
 import time
-from concurrent.futures import ProcessPoolExecutor
-import multiprocessing as mp
+import random
+from multiprocessing import Process, Queue, current_process, set_start_method
 import csv
-import fcntl  # For file locking on Unix systems
-import threading
 from pathlib import Path
 from datetime import datetime
 
@@ -32,7 +30,8 @@ def print_gpu_diagnostics():
     print("="*60)
 
 def save_result_with_lock(result, output_file, lock_file):
-    """Save a single result to CSV file with file locking"""
+    """Save a single result to CSV file with file locking (Unix compatible)"""
+    import fcntl
     import time
     import random
     
@@ -44,22 +43,11 @@ def save_result_with_lock(result, output_file, lock_file):
             # Create lock file directory if it doesn't exist
             os.makedirs(os.path.dirname(lock_file), exist_ok=True)
             
-            # Try to acquire lock with timeout
-            lock_acquired = False
-            lock_fd = None
-            
-            try:
-                # Open lock file
-                lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_RDWR)
-                lock_acquired = True
-            except FileExistsError:
-                # Lock file exists, wait and retry
-                delay = base_delay * (2 ** attempt) + random.uniform(0, 0.1)
-                time.sleep(delay)
-                continue
-            
-            if lock_acquired:
+            # Try to acquire lock with fcntl
+            with open(lock_file, 'w') as lockf:
                 try:
+                    fcntl.flock(lockf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    
                     # Check if CSV file exists and needs header
                     file_exists = Path(output_file).exists()
                     
@@ -89,14 +77,11 @@ def save_result_with_lock(result, output_file, lock_file):
                     print(f"[GPU {result.get('gpu_id', '?')}] Result saved to {output_file}")
                     return True
                     
-                finally:
-                    # Release lock
-                    if lock_fd is not None:
-                        os.close(lock_fd)
-                        try:
-                            os.unlink(lock_file)
-                        except FileNotFoundError:
-                            pass  # Already removed
+                except BlockingIOError:
+                    # Lock is held by another process, wait and retry
+                    delay = base_delay * (2 ** attempt) + random.uniform(0, 0.1)
+                    time.sleep(delay)
+                    continue
             
         except Exception as e:
             print(f"[GPU {result.get('gpu_id', '?')}] Error saving result (attempt {attempt + 1}): {e}")
@@ -109,32 +94,31 @@ def save_result_with_lock(result, output_file, lock_file):
     
     return False
 
-def process_questions_on_gpu(args):
-    """Worker function that processes a batch of questions on a specific GPU"""
-    device_id, question_batch, model_path, folder_path = args
+def worker(task_queue, gpu_id, model_path, folder_path):
+    """Worker function that processes questions from a shared queue on a specific GPU"""
     
     # Print diagnostics for this process
     print_gpu_diagnostics()
     
     # Set the current device for this process
-    torch.cuda.set_device(device_id)
+    torch.cuda.set_device(gpu_id)
     torch.cuda.empty_cache()
     
-    print(f"[GPU {device_id}] Loading model on process {os.getpid()}...")
+    print(f"[GPU {gpu_id}] Loading model on process {os.getpid()}...")
     
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         torch_dtype=torch.float16,
-        device_map={"": f"cuda:{device_id}"},  # Force all layers to this specific GPU
+        device_map={"": f"cuda:{gpu_id}"},  # Force all layers to this specific GPU
         trust_remote_code=True
     )
     
     # Find the think token ID for parsing
     think_token_id = 151668  # </think> token for Qwen3
     
-    print(f"[GPU {device_id}] Model loaded! Processing {len(question_batch)} questions...")
+    print(f"[GPU {gpu_id}] Model loaded! Starting to process questions from queue...")
     
     # Set up output files
     output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
@@ -164,9 +148,18 @@ Your Output Example (after your thinking process, which should be enclosed in <t
 3
 """
     
-    processed_count = 0
+
     
-    for i, item in enumerate(question_batch):
+    # Process questions from the queue until it's empty
+    while not task_queue.empty():
+        try:
+            item = task_queue.get_nowait()
+        except:
+            break  # queue is empty
+            
+        processed_count += 1
+        print(f"[GPU {gpu_id}] ({current_process().name}) Processing question {item.get("question_number")}: {item.get('question_number', '?')}")
+        
         question_text = item.get("question", "")
         passage = item.get("passage", "")
         choices = item.get("choices", [])
@@ -190,15 +183,13 @@ Your Output Example (after your thinking process, which should be enclosed in <t
         ]
 
         try:
-            print(f"[GPU {device_id}] Processing question {i+1}/{len(question_batch)}")
-            
             text_input = tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
                 enable_thinking=True
             )
-            model_inputs = tokenizer([text_input], return_tensors="pt").to(f"cuda:{device_id}")
+            model_inputs = tokenizer([text_input], return_tensors="pt").to(f"cuda:{gpu_id}")
 
             # Generate response
             with torch.no_grad():
@@ -225,7 +216,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 content_after_thinking = tokenizer.decode(content_after_thinking_ids, skip_special_tokens=True).strip()
 
             except ValueError:
-                print(f"[GPU {device_id}] Warning: </think> token not found in output for question {i+1}.")
+                print(f"[GPU {gpu_id}] Warning: </think> token not found in output.")
                 content_after_thinking = " -1 [No explicit thinking block found]"
                 thinking_content = tokenizer.decode(output_ids_only, skip_special_tokens=True).strip()
 
@@ -239,7 +230,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
             else:
                 parsed_answer = -1
 
-            print(f"[GPU {device_id}] Question {i+1} - Parsed: {parsed_answer}, Correct: {item.get('answer')}")
+            print(f"[GPU {gpu_id}] Question {item.get("question_number")} - Parsed: {parsed_answer}, Correct: {item.get('answer')}")
 
             # Create result dictionary
             result = {
@@ -251,18 +242,14 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 "parsed_answer_index": parsed_answer,
                 "correct_answer_index": item.get("answer"),
                 "correct": "true" if parsed_answer == item.get("answer") else "false",
-                "gpu_id": device_id
+                "gpu_id": gpu_id
             }
 
             # Save result immediately with file locking
-            save_success = save_result_with_lock(result, output_file, lock_file)
-            if save_success:
-                processed_count += 1
-            else:
-                print(f"[GPU {device_id}] Failed to save result for question {i+1}")
+            save_result_with_lock(result, output_file, lock_file)
 
         except Exception as e:
-            print(f"[GPU {device_id}] Error processing question {i+1}: {e}")
+            print(f"[GPU {gpu_id}] Error processing question {processed_count}: {e}")
             
             # Save error result
             error_result = {
@@ -274,16 +261,19 @@ Your Output Example (after your thinking process, which should be enclosed in <t
                 "parsed_answer_index": -1,
                 "correct_answer_index": item.get("answer"),
                 "correct": "false",
-                "gpu_id": device_id
+                "gpu_id": gpu_id
             }
             save_result_with_lock(error_result, output_file, lock_file)
 
-    print(f"[GPU {device_id}] Finished processing {len(question_batch)} questions! Saved {processed_count} results.")
-    return processed_count  # Return count instead of results list
+    print(f"[GPU {gpu_id}] ({current_process().name}) Finished processing {processed_count} questions!")
+    return processed_count
 
 def main():
     # Set multiprocessing start method to 'spawn' for CUDA compatibility
-    mp.set_start_method('spawn', force=True)
+    try:
+        set_start_method('spawn')
+    except RuntimeError:
+        pass  # only needed once
     
     # Print initial diagnostics
     print_gpu_diagnostics()
@@ -300,7 +290,7 @@ def main():
         print("Could not find 'train' data in dataset. Exiting.")
         return
     
-    model_name = "Qwen/Qwen3-8B"
+    model_name = "DeepSeek-R1-0528-Qwen3-8B"
     model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'
     folder_path = f'/kuacc/users/apolat21/lm_harness_results/{model_name}'
     
@@ -317,47 +307,31 @@ def main():
     # For testing, limit to first 50 questions (remove this line for full processing)
     #question_data = question_data[:50]  # Remove this line to process all questions
     
-    # Distribute questions among GPUs
-    questions_per_gpu = [[] for _ in range(num_gpus)]
-    for i, question in enumerate(question_data):
-        questions_per_gpu[i % num_gpus].append(question)
+    # Create shared task queue and add all questions
+    task_queue = Queue()
+    for question in question_data:
+        task_queue.put(question)
     
-    # Print distribution
-    for i in range(num_gpus):
-        print(f"GPU {i} will process {len(questions_per_gpu[i])} questions")
+    print(f"Added {len(question_data)} questions to task queue")
+    print(f"Starting {num_gpus} GPU worker processes...")
     
-    # Prepare arguments for each process
-    args_list = []
-    for i in range(num_gpus):
-        args_list.append((i, questions_per_gpu[i], model_path, folder_path))
-    
-    print("Starting parallel inference using ProcessPoolExecutor...")
     start_time = time.time()
     
-    # Use ProcessPoolExecutor for true parallel execution
-    with ProcessPoolExecutor(max_workers=num_gpus) as executor:
-        # Submit all GPU tasks
-        futures = []
-        for i, args in enumerate(args_list):
-            if len(args[1]) > 0:  # Only submit if there are questions to process
-                print(f"Submitting GPU {i} task with {len(args[1])} questions to separate process")
-                future = executor.submit(process_questions_on_gpu, args)
-                futures.append((i, future))
-          # Wait for all tasks to complete and collect results
-        total_processed = 0
-        for gpu_id, future in futures:
-            try:
-                processed_count = future.result()  # This will block until the task completes
-                total_processed += processed_count
-                print(f"GPU {gpu_id} completed its tasks! Processed {processed_count} questions")
-            except Exception as e:
-                print(f"GPU {gpu_id} encountered an error: {e}")
-                import traceback
-                traceback.print_exc()
+    # Create and start worker processes for each GPU
+    processes = []
+    for gpu_id in range(num_gpus):
+        p = Process(target=worker, args=(task_queue, gpu_id, model_path, folder_path))
+        p.start()
+        processes.append(p)
+        print(f"Started GPU {gpu_id} worker process with PID: {p.pid}")
+    
+    # Wait for all processes to complete
+    for gpu_id, p in enumerate(processes):
+        p.join()
+        print(f"GPU {gpu_id} worker process completed with exit code: {p.exitcode}")
     
     end_time = time.time()
-    print(f"All GPUs completed! Total time: {end_time - start_time:.2f} seconds")
-    print(f"Total questions processed: {total_processed}")
+    print(f"All GPU workers completed! Total time: {end_time - start_time:.2f} seconds")
     
     # Read the saved results for final analysis
     output_file = f"{folder_path}/model_answers_qwen3_8b_thinking_multiprocess.csv"
