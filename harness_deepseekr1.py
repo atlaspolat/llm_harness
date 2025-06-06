@@ -3,6 +3,28 @@ import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import re # For parsing the final answer
 import os
+import torch
+
+# Add this right after your imports to check GPU status
+print("="*60)
+print("GPU DIAGNOSTICS")
+print("="*60)
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"CUDA version: {torch.version.cuda}")
+print(f"Number of GPUs visible: {torch.cuda.device_count()}")
+print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'Not set')}")
+print(f"SLURM_JOB_ID: {os.environ.get('SLURM_JOB_ID', 'Not set')}")
+
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        props = torch.cuda.get_device_properties(i)
+        print(f"GPU {i}: {props.name} ({props.total_memory / 1e9:.1f} GB)")
+
+
+
+
+
+
 
 dataset = load_dataset("AtlasPolat/yks2024", streaming=False)
 
@@ -33,16 +55,18 @@ if os.path.exists(model_path):
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
     model_path,
-    torch_dtype="auto",
-    device_map="auto"
+    torch_dtype=torch.float16,  # Use float16 for better performance on GPUs
+    device_map="auto",
+    trust_remote_code=True  # Trust remote code for custom model architectures
     )
+    
     
 else:
                 # load the tokenizer and the model
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    torch_dtype="auto",
+    torch_dtype=torch.float16,
     device_map="auto"
     )
         print(f"Model does not exist at {model_path}. Saving model and tokenizer...")
@@ -51,6 +75,21 @@ else:
         model.save_pretrained(model_path)
         tokenizer.save_pretrained(model_path)
         print(f"Model saved successfully!")
+
+
+#after model loading
+print("\n" + "="*60)
+print("MODEL LOADING STATUS")
+print("="*60)
+print(f"Model device: {next(model.parameters()).device}")
+print(f"Model dtype: {next(model.parameters()).dtype}")
+
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        print(f"GPU {i} memory allocated: {torch.cuda.memory_allocated(i) / 1e9:.2f} GB")
+        print(f"GPU {i} memory reserved: {torch.cuda.memory_reserved(i) / 1e9:.2f} GB")
+print("="*60)
+
 
 
 
