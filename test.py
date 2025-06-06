@@ -10,44 +10,101 @@ model_name = "Qwen/Qwen3-8B"
 
 model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'  # Adjust this path if needed
 
- # load the tokenizer and the model
-tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-model_path,
-torch_dtype=torch.float16,  # Use float16 for better performance on GPUs
-device_map="auto",
-trust_remote_code=True  # Trust remote code for custom model architectures
-    )
+
+def load_model(device_id, prompts):
+
+    # load model for the specific GPU
+    print(f"Loading model on GPU {device_id}...")
+
+    # load the tokenizer and the model
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        max_length=512,  # Set max length to 32768
+        torch_dtype=torch.float16,  # Use float16 for better performance on GPUs
+        device_map=f"cuda:{device_id}",  # Force to specific GPU,  # Force everything to GPU 0 only,
+        trust_remote_code=True  # Trust remote code for custom model architectures
+        )
+    
+    for i, prompt in prompts:
+                    
+                # starting to process at a specific GPU
+
+                    print(f"Processing prompt on GPU {device_id}: {i} - {prompt}")
+                    messages = [
+                    {"role": "user", "content": prompt}
+                    
+                ]
+                    text = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
+                )
+                    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+                # conduct text completion
+                    generated_ids = model.generate(
+                        **model_inputs,
+                            max_new_tokens=32768
+                            )
+                    output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
+
+                    # parsing thinking content
+                    try:
+                    # rindex finding 151668 (</think>)
+                        index = len(output_ids) - output_ids[::-1].index(151668)
+                    except ValueError:
+                        index = 0
+
+                    thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+                    content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+
+                    # save the output to a file
+                    with open(f"output_gpu_{device_id}.txt", "a") as f:
+                        f.write(f"Prompt: {prompt}\n")
+                        f.write(f"Thinking Content: {thinking_content}\n")
+                        f.write(f"Content: {content}\n")
+                        f.write("\n" + "="*50 + "\n\n")
+
+                    # Print the work done message
+                    print(f"Work done for prompt on GPU {device_id}:{i} {prompt}")
+                    # Print the output
+                    print(f"Content: {content}")
+
+
 
 # prepare the model input
-prompt = "How can I improve my coding skills?"
-messages = [
-    {"role": "user", "content": prompt}
-]
-text = tokenizer.apply_chat_template(
-    messages,
-    tokenize=False,
-    add_generation_prompt=True,
-    enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
-)
-model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+prompt = ["How can I improve my coding skills?",
+          "What are some effective strategies for learning a new programming language?",
+          "Can you provide tips for debugging code efficiently?",
+          "What resources do you recommend for mastering algorithms and data structures?",
+          "How can I stay updated with the latest trends in software development?",
+          "What are some common mistakes to avoid when writing code?",
+          "How can I improve my problem-solving skills in programming?",
+          "What are the best practices for writing clean and maintainable code?"]
 
-# conduct text completion
-generated_ids = model.generate(
-    **model_inputs,
-    max_new_tokens=32768
-)
-output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
+# distribute the model across multiple GPUs
 
-# parsing thinking content
-try:
-    # rindex finding 151668 (</think>)
-    index = len(output_ids) - output_ids[::-1].index(151668)
-except ValueError:
-    index = 0
+# divide the prompts among the GPUs
 
-thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
-content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+num_gpus = torch.cuda.device_count()
+print(f"Number of GPUs available: {num_gpus}")
 
-print("thinking content:", thinking_content)
-print("content:", content)
+if num_gpus == 0:
+    print("No GPUs available. Exiting.")
+    exit(1)
+
+# Create list of lists, each containing prompts for a specific GPU
+prompts_per_gpu = [[] for _ in range(num_gpus)]
+
+for i, p in enumerate(prompt):
+    prompts_per_gpu[i % num_gpus].append(p)
+
+
+# Load and run the model on each GPU
+for i in range(num_gpus):
+    print(f"Loading model on GPU {i} with prompts: {prompts_per_gpu[i]}")
+    load_model(i, prompts_per_gpu[i])
+
+
