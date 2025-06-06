@@ -2,7 +2,7 @@ from datasets import load_dataset
 import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import re # For parsing the final answer
-
+import os
 
 dataset = load_dataset("AtlasPolat/yks2024", streaming=False)
 
@@ -15,28 +15,36 @@ print(df.head())
 
 model_name = "Qwen/Qwen3-8B" # Path to the model, can be a local path or a Hugging Face model hub path
 
+
+# Check if the model is already downloaded 
+# If not, it will download it from the Hugging Face model hub
+
+
 model_path = f'/kuacc/users/apolat21/lm_models/{model_name}'  # Adjust this path if needed
 
 folder_path = f'/kuacc/users/apolat21/lm_harness_results/{model_name}'
 
 
-# load the tokenizer and the model
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(
+
+# check if the model already exists in the model_path
+if os.path.exists(model_path):
+        
+        # load the tokenizer and the model
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+    model_path,
+    torch_dtype="auto",
+    device_map="auto"
+    )
+    
+else:
+                # load the tokenizer and the model
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype="auto",
     device_map="auto"
-)
-
-if True: # If you want to save the model and tokenizer locally
-    # Save the model and tokenizer locally
-    import os
-    
-
-    # check if the model already exists in the model_path
-    if os.path.exists(model_path):
-        print(f"Model already exists at {model_path}. Skipping save.")
-    else:
+    )
         print(f"Model does not exist at {model_path}. Saving model and tokenizer...")
         os.makedirs(model_path, exist_ok=True)
         print(f"Saving model to {model_path}...")
@@ -44,7 +52,7 @@ if True: # If you want to save the model and tokenizer locally
         tokenizer.save_pretrained(model_path)
         print(f"Model saved successfully!")
 
-        
+
 
 results_list = []
 think_token_id = 151668 # </think> token ID for Qwen/Qwen3-8B
