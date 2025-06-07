@@ -157,7 +157,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
             break  # queue is empty
             
         processed_count += 1
-        print(f"[GPU {gpu_id}] ({current_process().name}) Processing question {item.get("question_number")}: {item.get('question_number', '?')}")
+        print(f"[GPU {gpu_id}] ({current_process().name}) Processing question {processed_count}: {item.get('question_number', '?')}")
         
         question_text = item.get("question", "")
         passage = item.get("passage", "")
@@ -229,7 +229,7 @@ Your Output Example (after your thinking process, which should be enclosed in <t
             else:
                 parsed_answer = -1
 
-            print(f"[GPU {gpu_id}] Question {item.get("question_number")} - Parsed: {parsed_answer}, Correct: {item.get('answer')}")
+            print(f"[GPU {gpu_id}] Question {item.get("question_number")} Proccesed {processed_count} - Parsed: {parsed_answer}, Correct: {item.get('answer')}")
 
             # Create result dictionary
             result = {
