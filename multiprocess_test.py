@@ -2,11 +2,11 @@ import torch
 
 def proc1(device="cuda:0"):
     # do a giant matrix multiplication
-    print("Process 1 is starting")
+    print(f"Process with device {device}  is starting")
     a = torch.randn(10000, 10000, device=device)
     b = torch.randn(10000, 10000, device=device)
     c = torch.matmul(a, b)
-    print("Process 1 finished matrix multiplication on", device)
+    print(f"Process with device {device} finished matrix multiplication on", device)
 
 
 
