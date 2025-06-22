@@ -49,7 +49,7 @@ class TaskManager():
         number_part = int(time.time() * 1000)  
         random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
         unique_task_number = f"{number_part}_{random_part}"
-        task_data['task_code'] = task_name + "_" + unique_task_number + "_" + random_part
+        task_data['task_code'] = task_name + "^|^" + unique_task_number + "^|^" + random_part
 
         # Check if the task name already exists in the temporary directory
         task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
@@ -151,7 +151,7 @@ class TaskManager():
             If the result file does not exist, it creates a new one.
             """
 
-        task_name = task_code.split('_')[0]
+        task_name = task_code.split('^|^')[0]
         result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
 
         if not os.path.exists(result_file_path):
@@ -176,7 +176,7 @@ class TaskManager():
 
     def get_result(self, task_code):
         """ Get the results until it is available, if not available, it keeps waiting until the result is available."""
-        task_name = task_code.split('_')[0]
+        task_name = task_code.split('"^|^"')[0]
         result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
 
         while True:
