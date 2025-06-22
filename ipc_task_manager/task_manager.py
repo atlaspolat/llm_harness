@@ -165,14 +165,13 @@ class TaskManager():
                 results = pickle.load(result_file)
             except EOFError:
                 results = {}
+                print(f"Result file '{result_file_path}' is empty, initializing with an empty dictionary.")
             # Store the result in the results dictionary with task_code as the key
             results[task_code] = result
             # Move the file pointer to the beginning of the file
             result_file.seek(0)
             # Write the updated results dictionary back to the file
             pickle.dump(results, result_file)
-            # Truncate the file to remove any leftover data
-            result_file.truncate()
             fcntl.flock(result_file, fcntl.LOCK_UN)
 
 
@@ -190,6 +189,11 @@ class TaskManager():
                     fcntl.flock(result_file, fcntl.LOCK_EX)
                     try:
                         results = pickle.load(result_file)
+
+                        # check if the results are a dictionary
+                        if not isinstance(results, dict):
+                            raise ValueError("Results file does not contain a valid dictionary.")
+                        
                         if task_code in results:
                             fcntl.flock(result_file, fcntl.LOCK_UN)
                             return results[task_code]
