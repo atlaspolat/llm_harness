@@ -65,6 +65,11 @@ class TaskManager():
                 existing_queue = pickle.load(task_file)
                 # push the new task data to the existing queue 
                 if isinstance(existing_queue,  deque):
+                    # check if the queue has the end signal
+                    # pop the last task if it is the end signal
+                    # remove it if not put it back
+                    if existing_queue and existing_queue[-1].get('data', {}).get('__end__'):
+                        existing_queue.pop()
                     existing_queue.append(task)
                 else:
                     # Through an error if the existing data is not a queue
