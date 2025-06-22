@@ -19,8 +19,17 @@ class TaskManager():
        
        """
     
-    def __init__(self):
-        self.temp_dir = tempfile.mkdtemp()
+    def __init__(self, temp_dir=None):
+        # Check if temp_dir already exists (from unpickling)
+        if hasattr(self, 'temp_dir') and self.temp_dir:
+            return  # Don't recreate if already set
+            
+        if temp_dir:
+            self.temp_dir = temp_dir
+            os.makedirs(temp_dir, exist_ok=True)
+        else:
+            self.temp_dir = tempfile.mkdtemp()
+
 
     
     def push_task(self, task):
