@@ -52,6 +52,11 @@ def produce_results(task_manager, task_name, device='cpu'):
         
         print(f"Processing task: {task_code} with data: {data}")
 
+        # if the data has an ___end___ key, it means the task is ending
+        if '__end__' in data:
+            print(f"Received end signal for task: {task_code}. Ending processing.")
+            break
+
         # Simulate processing the task
 
         # normalize a random tensor
