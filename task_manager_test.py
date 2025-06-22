@@ -130,7 +130,9 @@ if __name__ == "__main__":
         for p in bosses:
                 p.join()
         
-        task_manager.send_stop_signal(task_name)
+        for i in range(len(cuda_devices)):
+            print(f"Sending stop signal to worker {i}")
+            task_manager.send_stop_signal(f'{task_name}_{i}')
         
         # Wait for workers to finish
         for p in workers:
