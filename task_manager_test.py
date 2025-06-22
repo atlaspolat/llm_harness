@@ -83,6 +83,8 @@ def produce_results(task_manager, task_name, device='cpu'):
         # Store the result in the TaskManager
         task_manager.put_result(task_code, result)
 
+        print(f"Processed task: {task_code} with result: {result}")
+
 
 
 

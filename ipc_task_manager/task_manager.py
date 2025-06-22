@@ -48,8 +48,7 @@ class TaskManager():
 
         number_part = int(time.time() * 1000)  
         random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
-        unique_task_number = f"{number_part}_{random_part}"
-        task['task_code'] = task_name + "^|^" + unique_task_number + "^|^" + random_part
+        task['task_code'] = task_name + "^|^" + number_part + "^|^" + random_part
 
         # Check if the task name already exists in the temporary directory
         task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
