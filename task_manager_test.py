@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     # Create processes for each cuda device that produces results
     workers = []
-    for i, device in cuda_devices:
+    for i, device in enumerate(cuda_devices):
         p = Process(target=produce_results, args=(task_manager, f'{task_name}_{i}', device))
         p.start()
         workers.append(p)
