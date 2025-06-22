@@ -30,7 +30,7 @@ def produce_results(task_manager, task_name, device='cpu'):
 
     while True:
         # check if there are tasks to process
-        task = task_manager.get_task(task_name)
+        task = task_manager.pull_task(task_name)
 
         if '__end__' in task:
             print("Ending...")
