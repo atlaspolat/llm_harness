@@ -26,7 +26,6 @@ def produce_tasks(task_manager, task_name):
 
 def produce_results(task_manager, task_name, device='cpu'):
     """Produce results for the TaskManager."""
-    task_manager = TaskManager()
 
     while True:
         # check if there are tasks to process
@@ -110,6 +109,32 @@ if __name__ == "__main__":
     # Create ten processes that produce tasks
     for i in range(10):
         p = Process(target=produce_tasks, args=(task_manager, task_name))
+        p.start()
+        processes.append(p)
+
+    # Wait for all producer processes to finish
+    try:
+        for p in processes:
+            if 'produce_tasks' in str(p._target):  # Wait for producers first
+                p.join()
+        
+        # Send stop signals to workers
+        for device in cuda_devices:
+            stop_task = {"name": task_name, "data": {"__end__": True}}
+            task_manager.push_task(stop_task)
+        
+        # Wait for workers to finish
+        for p in processes:
+            if 'produce_results' in str(p._target):
+                p.join()
+                
+    except KeyboardInterrupt:
+        print("Interrupted by user")
+        for p in processes:
+            p.terminate()
+    
+    finally:
+        task_manager.cleanup()
 
 
     
