@@ -99,23 +99,22 @@ if __name__ == "__main__":
     print(f"Available CUDA devices: {cuda_devices}")
 
     # Create processes for each cuda device that produces results
-    processes = []
+    workers = []
     for device in cuda_devices:
         p = Process(target=produce_results, args=(task_manager, task_name, device))
         p.start()
-        processes.append(p)
+        workers.append(p)
 
-
+    bosses = []
     # Create ten processes that produce tasks
     for i in range(10):
         p = Process(target=produce_tasks, args=(task_manager, task_name))
         p.start()
-        processes.append(p)
+        bosses.append(p)
 
     # Wait for all producer processes to finish
     try:
-        for p in processes:
-            if 'produce_tasks' in str(p._target):  # Wait for producers first
+        for p in bosses:
                 p.join()
         
         # Send stop signals to workers
@@ -124,13 +123,12 @@ if __name__ == "__main__":
             task_manager.push_task(stop_task)
         
         # Wait for workers to finish
-        for p in processes:
-            if 'produce_results' in str(p._target):
+        for p in workers:
                 p.join()
                 
     except KeyboardInterrupt:
         print("Interrupted by user")
-        for p in processes:
+        for p in workers:
             p.terminate()
     
     finally:
