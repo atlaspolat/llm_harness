@@ -28,9 +28,6 @@ def produce_tasks(task_manager, task_name):
 def produce_results(task_manager, task_name, device='cpu'):
     """Produce results for the TaskManager."""
 
-    index = device.split(':')[-1] if ':' in device else '0'
-
-    task_name = f"{task_name}_{index}"
 
     while True:
         # check if there are tasks to process
