@@ -8,6 +8,11 @@ def produce_tasks(task_manager, task_name):
     """Produce tasks for the TaskManager."""
 
     for i in range(10):
+        
+
+        # print the temp dir
+
+        print(task_manager.temp_dir)
 
         # Example tasks
         task = {"name": task_name,

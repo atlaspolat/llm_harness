@@ -204,5 +204,26 @@ class TaskManager():
     def __del__(self):
         """Destructor to ensure cleanup."""
         self.cleanup()
+
+
+    def __getstate__(self):
+        """Custom serialization to handle the temporary directory."""
+        state = self.__dict__.copy()
+        # Remove the temp_dir to avoid issues with pickling
+        del state['temp_dir']
+        return state
+    
+    def __setstate__(self, state):
+        """Custom deserialization to restore the temporary directory."""
+        self.__dict__.update(state)
+        # Recreate the temp_dir if it was not set
+        if not hasattr(self, 'temp_dir') or not self.temp_dir:
+            self.temp_dir = tempfile.mkdtemp()
+        else:
+            os.makedirs(self.temp_dir, exist_ok=True)
+
+    def get_temp_dir(self):
+        """Get the temporary directory path."""
+        return self.temp_dir
     
     
