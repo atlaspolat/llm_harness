@@ -41,14 +41,14 @@ class TaskManager():
             raise ValueError("Task must be a dictionary with 'name' and 'data' keys.")
 
         task_name = task['name']
-        task_data = task['data']
         # add a task number field that is a unique number for each task
         # Unique task code consists of the name of the task _ based on current time in milliseconds _ plus some random letters
 
 
         number_part = int(time.time() * 1000)  
         random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
-        task['task_code'] = task_name + "^|^" + number_part + "^|^" + random_part
+        unique_task_code = task_name + "^|^" + str(number_part) + "^|^" + random_part
+        task['task_code'] = unique_task_code
 
         # Check if the task name already exists in the temporary directory
         task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
@@ -98,7 +98,7 @@ class TaskManager():
 
 
         # return the unique task number
-        return unique_task_number
+        return unique_task_code
     
 
     def pull_task(self, task_name):
