@@ -117,15 +117,14 @@ if __name__ == "__main__":
     # Create processes for each cuda device that produces results
     workers = []
     for i, device in cuda_devices:
-        task_name = f"example_task_{i}"
-        p = Process(target=produce_results, args=(task_manager, task_name, device))
+        p = Process(target=produce_results, args=(task_manager, f'{task_name}_{i}', device))
         p.start()
         workers.append(p)
 
     bosses = []
     # Create ten processes that produce tasks
-    for i in range(5):
-        p = Process(target=produce_tasks, args=(task_manager, task_name))
+    for i in range(10):
+        p = Process(target=produce_tasks, args=(task_manager, f'{task_name}_{i % len(cuda_devices)}'))
         p.start()
         bosses.append(p)
 
