@@ -22,7 +22,7 @@ def produce_tasks(task_manager, task_name):
 
         # wait for the result
 
-        print(f"Produced task {i+1} with key: {key}")
+        print(f"Produced task {i+1} with key: {key} and task: {task}")
 
         # get the result
         result = task_manager.get_result(key)
@@ -38,6 +38,8 @@ def produce_results(task_manager, task_name, device='cpu'):
 
     while True:
         # check if there are tasks to process
+        print(f"Worker {task_name} checking for tasks...")
+
         task = task_manager.pull_task(task_name)
 
         if not task:
