@@ -163,16 +163,19 @@ class TaskManager():
                         if isinstance(tasks, deque) and tasks:
                             # Pop the first task from the list
                             task = tasks.popleft()
-                            # Write the updated list back to the file
-                            task_file.seek(0)
-                            pickle.dump(tasks, task_file)
-                            # Truncate the file to remove any leftover data
-                            task_file.truncate()
-                            fcntl.flock(task_file, fcntl.LOCK_UN)
+
 
                             # Check if the task is the end signal throw an exception
                             if '__end__' in task.get('data', {}):
+                                fcntl.flock(task_file, fcntl.LOCK_UN)
                                 return None
+                            else:
+                                # Write the updated list back to the file
+                                task_file.seek(0)
+                                pickle.dump(tasks, task_file)
+                                # Truncate the file to remove any leftover data
+                                task_file.truncate()
+                                fcntl.flock(task_file, fcntl.LOCK_UN)
                             return task
                     except IndexError:
                         # If the file is empty, wait for a new task
