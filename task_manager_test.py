@@ -118,6 +118,7 @@ if __name__ == "__main__":
     workers = []
     for i, device in enumerate(cuda_devices):
         p = Process(target=produce_results, args=(task_manager, f'{task_name}_{i}', device))
+        print(f"Starting worker process for device {device} with task name {task_name}_{i}")
         p.start()
         workers.append(p)
 
@@ -125,6 +126,7 @@ if __name__ == "__main__":
     # Create ten processes that produce tasks
     for i in range(10):
         p = Process(target=produce_tasks, args=(task_manager, f'{task_name}_{i % len(cuda_devices)}'))
+        print(f"Starting producer process for task {task_name}_{i % len(cuda_devices)}")
         p.start()
         bosses.append(p)
 
