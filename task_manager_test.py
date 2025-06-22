@@ -1,0 +1,115 @@
+from ipc_task_manager import TaskManager
+import torch
+
+from multiprocessing import Process
+
+
+def produce_tasks(task_manager, task_name):
+    """Produce tasks for the TaskManager."""
+
+    for i in range(10):
+
+        # Example tasks
+        task = {"name": task_name,
+             "data": {"info": "data1"}}
+
+        key = task_manager.push_task(task)
+
+        # wait for the result
+
+        print(f"Produced task {i+1} with key: {key}")
+
+        # get the result
+        result = task_manager.get_result(key)
+        print(f"Result for task {i+1}: {result}")
+
+
+def produce_results(task_manager, task_name, device='cpu'):
+    """Produce results for the TaskManager."""
+    task_manager = TaskManager()
+
+    while True:
+        # check if there are tasks to process
+        task = task_manager.get_task(task_name)
+
+        if '__end__' in task:
+            print("Ending...")
+            break
+
+        # get the data from the task
+        data = task.get('data', {})
+        #get the task code
+        task_code = task.get('task_code', '')
+
+
+        if task_code == '':
+            # Throw an exception if the task code is not found
+            raise ValueError("Task code not found in the task.")
+        
+        print(f"Processing task: {task_code} with data: {data}")
+
+        # Simulate processing the task
+
+        # normalize a random tensor
+        tensor1 = torch.randn(2000, 2000).to(device)
+
+        tensor1 = tensor1 / torch.norm(tensor1)
+
+        tensor2 = torch.randn(2000, 2000).to(device)
+
+        tensor2 = tensor2 / torch.norm(tensor2)
+
+        # Perform a matrix multiplication
+        result_tensor = torch.matmul(tensor1, tensor2)
+        # Get the determinant of the result tensor
+
+        det_result = torch.det(result_tensor)
+
+        # Create the result dictionary
+
+        result = {
+            "task_code": task_code,
+            "task_type": task_name,
+            "data": {
+                "det_result": det_result.item(),
+            }
+        }
+
+
+        # Store the result in the TaskManager
+        task_manager.put_result(task_code, result)
+
+
+
+
+
+
+
+        
+        
+if __name__ == "__main__":
+    # Create a TaskManager instance
+    task_manager = TaskManager()
+
+    # Define the task name
+    task_name = "example_task"
+
+
+    # Get all the cuda devices available
+    cuda_devices = [f"cuda:{i}" for i in range(torch.cuda.device_count())]
+    print(f"Available CUDA devices: {cuda_devices}")
+
+    # Create processes for each cuda device that produces results
+    processes = []
+    for device in cuda_devices:
+        p = Process(target=produce_results, args=(task_manager, task_name, device))
+        p.start()
+        processes.append(p)
+
+
+    # Create ten processes that produce tasks
+    for i in range(10):
+        p = Process(target=produce_tasks, args=(task_manager, f"{task_name}_{i+1}"))
+
+
+    

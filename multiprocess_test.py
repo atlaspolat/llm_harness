@@ -238,20 +238,6 @@ def llm_process(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
 
     #ocr queue
