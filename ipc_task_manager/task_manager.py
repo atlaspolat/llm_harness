@@ -153,6 +153,9 @@ class TaskManager():
         task_name = task_code.split('^|^')[0]
         result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
 
+        # debugging
+        print(f"Storing result for task '{task_name}' with code '{task_code}' in file '{result_file_path}'")
+
         if not os.path.exists(result_file_path):
             raise FileNotFoundError(f"Result file for task '{task_name}' does not exist.")
         
@@ -177,6 +180,9 @@ class TaskManager():
         """ Get the results until it is available, if not available, it keeps waiting until the result is available."""
         task_name = task_code.split('"^|^"')[0]
         result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
+
+        # debugging
+        print(f"Retrieving result for task '{task_name}' with code '{task_code}' from file '{result_file_path}'")
 
         while True:
             if os.path.exists(result_file_path):
