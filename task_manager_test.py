@@ -36,18 +36,16 @@ def produce_results(task_manager, task_name, device='cpu'):
         # check if there are tasks to process
         task = task_manager.pull_task(task_name)
 
-        if '__end__' in task:
-            print("Ending...")
-            break
-
-        # get the data from the task
-        data = task.get('data', {})
-
-        if not data:
+        if not task:
             # If no data is found, skip processing this task
             print("Stop signal received or no data found. Ending processing.")
             break
 
+
+        # get the data from the task
+        data = task.get('data', {})
+
+        
         #get the task code
         task_code = task.get('task_code', '')
 
