@@ -15,7 +15,7 @@ from multiprocessing import Process, Queue
 
 
 
-def geo_process(task_queue, device="cuda:0"):
+def geo_process(task_queue, return_queue, device="cuda:0"):
     
     print(f"Geo process started on {device}")
 
@@ -56,7 +56,7 @@ def geo_process(task_queue, device="cuda:0"):
         }
 
         # put the result in the return queue
-        task["return_queue"].put(result)
+        return_queue.put(result)
 
         print(f"Geo process on {device} finished task: {task['data']['question']}")
 
@@ -66,7 +66,7 @@ def geo_process(task_queue, device="cuda:0"):
 
 
 
-def ocr_process(task_queue, device="cuda:0"):
+def ocr_process(task_queue, return_queue, device="cuda:0"):
     print(f"OCR process started on {device}")
 
 
@@ -104,13 +104,13 @@ def ocr_process(task_queue, device="cuda:0"):
         }
 
         # put the result in the return queue
-        task["return_queue"].put(result)
+        return_queue.put(result)
 
         print(f"OCR process on {device} finished task: {task['data']['question']}")
 
 
 
-def imageqa_process(task_queue, device="cuda:0"):
+def imageqa_process(task_queue, return_queue, device="cuda:0"):
     print(f"ImageQA process started on {device}")
 
     while True:
@@ -143,21 +143,16 @@ def imageqa_process(task_queue, device="cuda:0"):
         }
 
         # put the result in the return queue
-        task["return_queue"].put(result)
+        return_queue.put(result)
         print(f"ImageQA process on {device} finished task: {task['data']['question']}")
 
-        
 
 
 
-def llm_process(ocr_queue, imageqa_queue, geo_queue, device="cuda:0"):
+
+def llm_process(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue, geo_queue, geo_result_queue, device="cuda:0"):
 
     print(f"LLM process started on {device}")
-
-    # create result  queues for each task type
-    ocr_result_queue = Queue()
-    imageqa_result_queue = Queue()
-    geo_result_queue = Queue()
 
 
     # Set up a timer and work for 15 seconds
@@ -177,7 +172,6 @@ def llm_process(ocr_queue, imageqa_queue, geo_queue, device="cuda:0"):
                 "image": "path/to/image.jpg",
                 "question": "What is written in the image?",
             },
-            "return_queue": ocr_result_queue
         }
 
         ocr_queue.put(task)
@@ -188,7 +182,6 @@ def llm_process(ocr_queue, imageqa_queue, geo_queue, device="cuda:0"):
                 "image": "path/to/image.jpg",
                 "question": "What is in the image?",
             },
-            "return_queue": imageqa_result_queue
         }
         imageqa_queue.put(task)
 
@@ -198,7 +191,7 @@ def llm_process(ocr_queue, imageqa_queue, geo_queue, device="cuda:0"):
                 "image": "path/to/image.jpg",
                 "question": "What is the location in the image?",
             },
-            "return_queue": geo_result_queue
+
         }
 
 
@@ -224,9 +217,6 @@ def llm_process(ocr_queue, imageqa_queue, geo_queue, device="cuda:0"):
         else:
             print(f"Geo result received: {geo_result}")
         
-
-
-
 
         #wait for a second
         time.sleep(1)
@@ -274,6 +264,11 @@ if __name__ == "__main__":
 
     geo_queue = Queue()
 
+    # create result  queues for each task type
+    ocr_result_queue = Queue()
+    imageqa_result_queue = Queue()
+    geo_result_queue = Queue()
+
 
 
 
@@ -295,16 +290,16 @@ if __name__ == "__main__":
     for i, device in enumerate(devices):
         if i == 0:
             # imageqa process
-            p = Process(target=imageqa_process, args=(imageqa_queue, device))
+            p = Process(target=imageqa_process, args=(imageqa_queue, imageqa_result_queue, device))
         elif i == 1:
             # geo process
-            p = Process(target=geo_process, args=(geo_queue, device))
+            p = Process(target=geo_process, args=(geo_queue, geo_result_queue, device))
         elif i == 2:
             # ocr process
-            p = Process(target=ocr_process, args=(ocr_queue, device))
+            p = Process(target=ocr_process, args=(ocr_queue, ocr_result_queue, device))
         else:
             # owner process
-            p = Process(target=llm_process, args=(ocr_queue, imageqa_queue, geo_queue, device))
+            p = Process(target=llm_process, args=(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue, geo_queue, geo_result_queue, device))
         processes.append(p)
         p.start()
 
