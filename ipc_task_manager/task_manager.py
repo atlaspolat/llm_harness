@@ -118,7 +118,7 @@ class TaskManager():
                     fcntl.flock(task_file, fcntl.LOCK_EX)
                     try:
                         tasks = pickle.load(task_file)
-                        if tasks:
+                        if isinstance(tasks, deque):
                             # Pop the first task from the list
                             task = tasks.popleft()
                             # If the task is None, continue to wait for 10ms and try again
