@@ -7,7 +7,7 @@ from multiprocessing import Process
 def produce_tasks(task_manager, task_name):
     """Produce tasks for the TaskManager."""
 
-    for i in range(5):
+    for i in range(10):
         
 
         # print the temp dir
@@ -31,6 +31,10 @@ def produce_tasks(task_manager, task_name):
 
 def produce_results(task_manager, task_name, device='cpu'):
     """Produce results for the TaskManager."""
+
+    index = device.split(':')[-1] if ':' in device else '0'
+
+    task_name = f"{task_name}_{index}"
 
     while True:
         # check if there are tasks to process
@@ -112,7 +116,8 @@ if __name__ == "__main__":
 
     # Create processes for each cuda device that produces results
     workers = []
-    for device in cuda_devices:
+    for i, device in cuda_devices:
+        task_name = f"example_task_{i}"
         p = Process(target=produce_results, args=(task_manager, task_name, device))
         p.start()
         workers.append(p)
