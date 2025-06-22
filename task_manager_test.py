@@ -10,10 +10,6 @@ def produce_tasks(task_manager, task_name):
     for i in range(10):
         
 
-        # print the temp dir
-
-        print(task_manager.temp_dir)
-
         # Example tasks
         task = {"name": task_name,
              "data": {"info": "data1"}}
