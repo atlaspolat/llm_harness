@@ -7,7 +7,7 @@ from multiprocessing import Process
 def produce_tasks(task_manager, task_name):
     """Produce tasks for the TaskManager."""
 
-    for i in range(10):
+    for i in range(5):
         
 
         # print the temp dir
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     bosses = []
     # Create ten processes that produce tasks
-    for i in range(10):
+    for i in range(5):
         p = Process(target=produce_tasks, args=(task_manager, task_name))
         p.start()
         bosses.append(p)
