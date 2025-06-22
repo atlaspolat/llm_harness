@@ -113,40 +113,8 @@ class TaskManager():
            The task is expected to be a dictionary with 'name' and 'data' keys.
            The task data is stored in a queue in a temporary file.
         """
-
-        task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
-
-        while True:
-            if os.path.exists(task_file_path):
-                with open(task_file_path, 'rb+') as task_file:
-                    fcntl.flock(task_file, fcntl.LOCK_EX)
-                    try:
-                        tasks = pickle.load(task_file)
-                        if isinstance(tasks, deque):
-                            # Pop the first task from the list
-                            task = tasks.popleft()
-                            # If the task is None, continue to wait for 10ms and try again
-
-                            # Write the updated list back to the file
-                            task_file.seek(0)
-                            pickle.dump(tasks, task_file)
-                            # Truncate the file to remove any leftover data
-                            task_file.truncate()
-                            fcntl.flock(task_file, fcntl.LOCK_UN)
-                            return task
-                    except IndexError:
-                        # If the file is empty, wait for a new task
-                        fcntl.flock(task_file, fcntl.LOCK_UN)
-                        time.sleep(1)
-                        continue
-
-                    # If the task is found, return it
-                if task:
-                    return task
-
-            else:
-                # If the task file does not exist, wait for a new task
-                time.sleep(10)
+        ## call  the pull_task_timeout with a timeout of None
+        return self.pull_task_timeout(task_name, timeout=None)
 
     def pull_task_timeout(self, task_name, timeout=10):
         """Pulls a task from the temporary directory by its name with a timeout.
@@ -189,7 +157,7 @@ class TaskManager():
                         continue
 
             # Check if timeout has been reached
-            if time.time() - start_time > timeout:
+            if timeout is not None and time.time() - start_time > timeout:
                 return None
 
             time.sleep(1)
@@ -220,23 +188,8 @@ class TaskManager():
     def get_result(self, task_code):
         """ Get the results until it is available, if not available, it keeps waiting until the result is available."""
 
-        result_file_path = os.path.join(self.temp_dir, f"{task_code}.res")
-
-
-        while True:
-            if os.path.exists(result_file_path):
-                with open(result_file_path, 'rb') as result_file:
-                    fcntl.flock(result_file, fcntl.LOCK_EX)
-                    try:
-                        result = pickle.load(result_file)
-                        return result
-                    except EOFError:
-                        # If the file is empty, wait for a new result
-                        fcntl.flock(result_file, fcntl.LOCK_UN)
-                        time.sleep(1)
-            else:
-                # If the result file does not exist, wait for a new result
-                time.sleep(1)
+        # call the get_results_timeout with a timeout of None
+        return self.get_results_timeout(task_code, timeout=None)
 
     def get_results_timeout(self, task_name, timeout=10):
         """Get results for a specific task name with a timeout.
@@ -260,7 +213,7 @@ class TaskManager():
                         time.sleep(1)
 
             # Check if timeout has been reached
-            if time.time() - start_time > timeout:
+            if timeout is not None and time.time() - start_time > timeout:
                 return None
 
             time.sleep(1)
