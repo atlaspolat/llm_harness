@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     # Create ten processes that produce tasks
     for i in range(10):
-        p = Process(target=produce_tasks, args=(task_manager, f"{task_name}_{i+1}"))
+        p = Process(target=produce_tasks, args=(task_manager, task_name))
 
 
     
