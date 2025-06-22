@@ -24,7 +24,7 @@ def geo_process(task_queue, return_queue, device="cuda:0"):
         if task_queue.empty():
             continue
     
-        task = task_queue.get
+        task = task_queue.get()
 
         if task == "STOP":
             print(f"Geo process on {device} stopping.")
@@ -160,7 +160,7 @@ def llm_process(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue
     start_time = time.time()
 
     while True:
-        if time.time() - start_time > 15:
+        if time.time() - start_time > 25:
             print(f"LLM process on {device} stopping after 15 seconds.")
             break
 
@@ -194,24 +194,26 @@ def llm_process(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue
 
         }
 
+        geo_queue.put(task)
+
 
         # collect results from the queues
 
         # wait for results from ocr
 
-        ocr_result = ocr_result_queue.get(timeout=10)
+        ocr_result = ocr_result_queue.get(timeout=15)
         if not ocr_result:
             print("No OCR result received.")
         else:
             print(f"OCR result received: {ocr_result}")
         
-        imageqa_result = imageqa_result_queue.get(timeout=10)
+        imageqa_result = imageqa_result_queue.get(timeout=15)
         if not imageqa_result:
             print("No ImageQA result received.")
         else:
             print(f"ImageQA result received: {imageqa_result}")    
         
-        geo_result = geo_result_queue.get(timeout=10)
+        geo_result = geo_result_queue.get(timeout=15)
         if not geo_result:
             print("No Geo result received.")
         else:
@@ -230,9 +232,7 @@ def llm_process(ocr_queue, ocr_result_queue, imageqa_queue, imageqa_result_queue
 
     print("LLM process stopping and sending stop signals to all processes.")
 
-    for p in processes:
-        p.join()
-        print(f"Process {p.name} stopped.")
+  
 
     
 
@@ -306,3 +306,7 @@ if __name__ == "__main__":
 
     # check if more than one device is available
     # make an ownner process and the rest of the processes are workers
+
+    for p in processes:
+        p.join()
+        print(f"Process {p.name} stopped.")
