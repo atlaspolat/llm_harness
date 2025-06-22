@@ -49,7 +49,7 @@ class TaskManager():
         number_part = int(time.time() * 1000)  
         random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
         unique_task_number = f"{number_part}_{random_part}"
-        task_data['task_code'] = task_name + "^|^" + unique_task_number + "^|^" + random_part
+        task['task_code'] = task_name + "^|^" + unique_task_number + "^|^" + random_part
 
         # Check if the task name already exists in the temporary directory
         task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
@@ -66,7 +66,7 @@ class TaskManager():
                 existing_queue = pickle.load(task_file)
                 # push the new task data to the existing queue 
                 if isinstance(existing_queue,  deque):
-                    existing_queue.append(task_data)
+                    existing_queue.append(task)
                 else:
                     # Through an error if the existing data is not a queue
                     raise ValueError("Existing data in the task file is not a queue.")
@@ -82,7 +82,7 @@ class TaskManager():
                 fcntl.flock(task_file, fcntl.LOCK_EX)
                 # create a queue with the task data
                 task_queue = deque()
-                task_queue.append(task_data)
+                task_queue.append(task)
                 pickle.dump(task_queue, task_file)
                 fcntl.flock(task_file, fcntl.LOCK_UN)
 
