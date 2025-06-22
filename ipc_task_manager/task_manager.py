@@ -149,6 +149,7 @@ class TaskManager():
            it returns None.
            The task is expected to be a dictionary with 'name' and 'data' keys.
            The task data is stored in a queue in a temporary file.
+           If the end signal is received, it returns None.
         """
         task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
         start_time = time.time()
@@ -168,6 +169,10 @@ class TaskManager():
                             # Truncate the file to remove any leftover data
                             task_file.truncate()
                             fcntl.flock(task_file, fcntl.LOCK_UN)
+
+                            # Check if the task is the end signal throw an exception
+                            if '__end__' in task.get('data', {}):
+                                return None
                             return task
                     except IndexError:
                         # If the file is empty, wait for a new task
@@ -266,5 +271,14 @@ class TaskManager():
     def get_temp_dir(self):
         """Get the temporary directory path."""
         return self.temp_dir
+    
+
+    def send_stop_signal(self, task_name):
+        """Send a stop signal to the task manager.
+           This method creates a stop task with the name 'task_name' and data {'__end__': True}.
+           It pushes the stop task to the task manager.
+        """
+        stop_task = {"name": task_name, "data": {"__end__": True}}
+        self.push_task(stop_task)
     
     
