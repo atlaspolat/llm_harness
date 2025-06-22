@@ -150,60 +150,43 @@ class TaskManager():
             If the result file does not exist, it creates a new one.
             """
 
-        task_name = task_code.split('^|^')[0]
-        result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
+
+        result_file_path = os.path.join(self.temp_dir, f"{task_code}.res")
 
         # debugging
-        print(f"Storing result for task '{task_name}' with code '{task_code}' in file '{result_file_path}'")
-
-        if not os.path.exists(result_file_path):
-            raise FileNotFoundError(f"Result file for task '{task_name}' does not exist.")
+        print(f"Storing result for task with code '{task_code}' in file '{result_file_path}'")
         
-        with open(result_file_path, 'rb+') as result_file:
+        with open(result_file_path, 'wb') as result_file:
             fcntl.flock(result_file, fcntl.LOCK_EX)
-            try:
-                results = pickle.load(result_file)
-            except EOFError:
-                results = {}
-                print(f"Result file '{result_file_path}' is empty, initializing with an empty dictionary.")
-            # Store the result in the results dictionary with task_code as the key
-            results[task_code] = result
             # Move the file pointer to the beginning of the file
             result_file.seek(0)
             # Write the updated results dictionary back to the file
-            pickle.dump(results, result_file)
+            pickle.dump(result, result_file)
             fcntl.flock(result_file, fcntl.LOCK_UN)
 
 
     def get_result(self, task_code):
         """ Get the results until it is available, if not available, it keeps waiting until the result is available."""
-        task_name = task_code.split('^|^')[0]
-        result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
+
+        result_file_path = os.path.join(self.temp_dir, f"{task_code}.res")
 
         # debugging
-        print(f"Retrieving result for task '{task_name}' with code '{task_code}' from file '{result_file_path}'")
+        print(f"Retrieving result for task with code '{task_code}' from file '{result_file_path}'")
 
         while True:
             if os.path.exists(result_file_path):
                 with open(result_file_path, 'rb') as result_file:
                     fcntl.flock(result_file, fcntl.LOCK_EX)
                     try:
-                        results = pickle.load(result_file)
-
-                        # check if the results are a dictionary
-                        if not isinstance(results, dict):
-                            raise ValueError("Results file does not contain a valid dictionary.")
-                        
-                        if task_code in results:
-                            fcntl.flock(result_file, fcntl.LOCK_UN)
-                            return results[task_code]
+                        result = pickle.load(result_file)
+                        return result
                     except EOFError:
                         # If the file is empty, wait for a new result
                         fcntl.flock(result_file, fcntl.LOCK_UN)
                         time.sleep(1)
             else:
                 # If the result file does not exist, wait for a new result
-                time.sleep(10)
+                time.sleep(1)
 
         
     def cleanup(self):
