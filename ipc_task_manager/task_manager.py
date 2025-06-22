@@ -177,7 +177,7 @@ class TaskManager():
 
     def get_result(self, task_code):
         """ Get the results until it is available, if not available, it keeps waiting until the result is available."""
-        task_name = task_code.split('"^|^"')[0]
+        task_name = task_code.split('^|^')[0]
         result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
 
         # debugging
