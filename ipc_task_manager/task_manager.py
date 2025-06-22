@@ -143,6 +143,46 @@ class TaskManager():
                 # If the task file does not exist, wait for a new task
                 time.sleep(10)
 
+    def pull_task_timeout(self, task_name, timeout=10):
+        """Pulls a task from the temporary directory by its name with a timeout.
+           Returns a single task, if there is no task with the given name within the timeout,
+           it returns None.
+           The task is expected to be a dictionary with 'name' and 'data' keys.
+           The task data is stored in a queue in a temporary file.
+        """
+        task_file_path = os.path.join(self.temp_dir, f"{task_name}.task")
+        start_time = time.time()
+
+        while True:
+            if os.path.exists(task_file_path):
+                with open(task_file_path, 'rb+') as task_file:
+                    fcntl.flock(task_file, fcntl.LOCK_EX)
+                    try:
+                        tasks = pickle.load(task_file)
+                        if isinstance(tasks, deque) and tasks:
+                            # Pop the first task from the list
+                            task = tasks.popleft()
+                            # Write the updated list back to the file
+                            task_file.seek(0)
+                            pickle.dump(tasks, task_file)
+                            # Truncate the file to remove any leftover data
+                            task_file.truncate()
+                            fcntl.flock(task_file, fcntl.LOCK_UN)
+                            return task
+                    except IndexError:
+                        # If the file is empty, wait for a new task
+                        fcntl.flock(task_file, fcntl.LOCK_UN)
+                        time.sleep(1)
+                        continue
+
+            # Check if timeout has been reached
+            if time.time() - start_time > timeout:
+                return None
+
+            time.sleep(1)
+
+    
+
     def put_result(self, task_code, result):
         """" Store the result of a task in the result file.
             The result file is a temporary file in the temporary directory with the name of the task.
@@ -153,8 +193,7 @@ class TaskManager():
 
         result_file_path = os.path.join(self.temp_dir, f"{task_code}.res")
 
-        # debugging
-        print(f"Storing result for task with code '{task_code}' in file '{result_file_path}'")
+
         
         with open(result_file_path, 'wb') as result_file:
             fcntl.flock(result_file, fcntl.LOCK_EX)
@@ -170,8 +209,6 @@ class TaskManager():
 
         result_file_path = os.path.join(self.temp_dir, f"{task_code}.res")
 
-        # debugging
-        print(f"Retrieving result for task with code '{task_code}' from file '{result_file_path}'")
 
         while True:
             if os.path.exists(result_file_path):
@@ -187,6 +224,33 @@ class TaskManager():
             else:
                 # If the result file does not exist, wait for a new result
                 time.sleep(1)
+
+    def get_results_timeout(self, task_name, timeout=10):
+        """Get results for a specific task name with a timeout.
+           Returns the results as a dictionary with task codes as keys and results as values.
+           If the result is not available within the timeout, it returns Null.
+        """
+
+        result_file_path = os.path.join(self.temp_dir, f"{task_name}.res")
+        start_time = time.time()
+
+        while True:
+            if os.path.exists(result_file_path):
+                with open(result_file_path, 'rb') as result_file:
+                    fcntl.flock(result_file, fcntl.LOCK_EX)
+                    try:
+                        results = pickle.load(result_file)
+                        return results
+                    except EOFError:
+                        # If the file is empty, wait for a new result
+                        fcntl.flock(result_file, fcntl.LOCK_UN)
+                        time.sleep(1)
+
+            # Check if timeout has been reached
+            if time.time() - start_time > timeout:
+                return None
+
+            time.sleep(1)
 
         
     def cleanup(self):
