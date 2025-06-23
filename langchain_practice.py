@@ -22,7 +22,7 @@ text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
 split_docs = text_splitter.split_documents(documents)
 
 # ==== 3. Create embeddings and vector store ====
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embedding_model = HuggingFaceEmbeddings(model_name="models/all-MiniLM-L6-v2")
 vectorstore = Chroma.from_documents(split_docs, embedding=embedding_model)
 
 # ==== 4. Set up RAG chain ====
