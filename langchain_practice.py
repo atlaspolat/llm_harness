@@ -18,13 +18,25 @@ model = AutoModelForCausalLM.from_pretrained(
     low_cpu_mem_usage=True      # Optional flag to reduce CPU memory during loading
 )
 
+# find available GPU
+if torch.cuda.is_available():
+    print("Using GPU:", torch.cuda.get_device_name(0))
+
+# make a list of available GPUs, the thing is we are on a multi-GPU system and gpu 0, 1, 2, are used by other processes
+available_gpus = [i for i in range(torch.cuda.device_count()) if torch.cuda.get_device_properties(i).total_memory > 0]
+if not available_gpus:
+    raise RuntimeError("No available GPUs found. Please check your setup.")
+
+
+
+
 pipe = pipeline(
     "text-generation",
     model=model,
     tokenizer=tokenizer,
     max_new_tokens=512,
-    device=0                    # Use GPU 0; for CPU use device=-1
-)
+    device=available_gpus[0] if available_gpus else -1,  # Use the first available GPU or CPU
+    )
 
 llm = HuggingFacePipeline(pipeline=pipe)
 
