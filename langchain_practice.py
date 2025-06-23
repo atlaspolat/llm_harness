@@ -1,10 +1,10 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain.llms import HuggingFacePipeline
-from langchain.document_loaders import TextLoader
+from langchain_community.llms import HuggingFacePipeline
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 
 # ==== 1. Load your local Hugging Face model with GPU support ====
@@ -26,9 +26,6 @@ if torch.cuda.is_available():
 available_gpus = [i for i in range(torch.cuda.device_count()) if torch.cuda.get_device_properties(i).total_memory > 0]
 if not available_gpus:
     raise RuntimeError("No available GPUs found. Please check your setup.")
-
-
-
 
 pipe = pipeline(
     "text-generation",
