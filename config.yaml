@@ -1,0 +1,9 @@
+name: My App
+version: 1.0
+debug: true
+database:
+  host: localhost
+  port: 5432
+  users:
+    - alice
+    - bob
