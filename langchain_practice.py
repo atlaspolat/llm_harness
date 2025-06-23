@@ -9,31 +9,39 @@ from langchain.chains import RetrievalQA
 
 # ==== 1. Load your local Hugging Face model with GPU support ====
 MODEL_PATH = "models/Qwen/Qwen3-8B"  # folder with the model files
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_PATH,
-    device_map="auto",          # Automatically assign model layers to GPU(s)
-    torch_dtype=torch.float16,  # Use half precision for faster inference and less memory (optional)
-    low_cpu_mem_usage=True      # Optional flag to reduce CPU memory during loading
-)
-
-# find available GPU
-if torch.cuda.is_available():
-    print("Using GPU:", torch.cuda.get_device_name(0))
-
-# make a list of available GPUs, the thing is we are on a multi-GPU system and gpu 0, 1, 2, are used by other processes
+# Find the first available GPU
 available_gpus = [i for i in range(torch.cuda.device_count()) if torch.cuda.get_device_properties(i).total_memory > 0]
 if not available_gpus:
     raise RuntimeError("No available GPUs found. Please check your setup.")
 
+print(f"Available GPUs: {available_gpus}")
+
+first_gpu = available_gpus[0]
+device_name = f"cuda:{first_gpu}"
+
+
+print(f"Using GPU {first_gpu}: {torch.cuda.get_device_name(first_gpu)}")
+
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+
+
+# OR Option 2: Manual device placement (if you prefer explicit control)
+model = AutoModelForCausalLM.from_pretrained(
+     MODEL_PATH,
+     torch_dtype=torch.float16,
+     low_cpu_mem_usage=True
+ ).to(device_name)
+
+
+ 
 pipe = pipeline(
-    "text-generation",
-    model=model,
-    tokenizer=tokenizer,
-    max_new_tokens=512,
-    device=available_gpus[0] if available_gpus else -1,  # Use the first available GPU or CPU
-    )
+     "text-generation",
+     model=model,
+     tokenizer=tokenizer,
+     max_new_tokens=512,
+     device=device_name,
+ )
 
 llm = HuggingFacePipeline(pipeline=pipe)
 
@@ -45,7 +53,12 @@ text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
 split_docs = text_splitter.split_documents(documents)
 
 # ==== 3. Create embeddings and vector store ====
-embedding_model = HuggingFaceEmbeddings(model_name="models/all-MiniLM-L6-v2")
+# Assign embedding model to the same GPU
+embedding_model = HuggingFaceEmbeddings(
+    model_name="models/all-MiniLM-L6-v2",
+    model_kwargs={'device': device_name}  # Assign to first available GPU
+)
+
 vectorstore = Chroma.from_documents(split_docs, embedding=embedding_model)
 
 # ==== 4. Set up RAG chain ====
