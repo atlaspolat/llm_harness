@@ -1,3 +1,4 @@
+import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain.llms import HuggingFacePipeline
 from langchain.document_loaders import TextLoader
@@ -6,16 +7,29 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 
-# ==== 1. Load your local Hugging Face model ====
+# ==== 1. Load your local Hugging Face model with GPU support ====
 MODEL_PATH = "models/Qwen/Qwen3-8B"  # folder with the model files
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
 
-pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_new_tokens=512)
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_PATH,
+    device_map="auto",          # Automatically assign model layers to GPU(s)
+    torch_dtype=torch.float16,  # Use half precision for faster inference and less memory (optional)
+    low_cpu_mem_usage=True      # Optional flag to reduce CPU memory during loading
+)
+
+pipe = pipeline(
+    "text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    max_new_tokens=512,
+    device=0                    # Use GPU 0; for CPU use device=-1
+)
+
 llm = HuggingFacePipeline(pipeline=pipe)
 
 # ==== 2. Load and split your document ====
-loader = TextLoader("my_docs.txt")  # your file with knowledge
+loader = TextLoader("my_docs.txt")
 documents = loader.load()
 
 text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
