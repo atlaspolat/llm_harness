@@ -1,10 +1,10 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain_community.llms import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline  # Updated import
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings  # Updated import
 from langchain.chains import RetrievalQA
 
 # ==== 1. Load your local Hugging Face model with GPU support ====
@@ -20,21 +20,17 @@ print(f"Available GPUs: {available_gpus}")
 first_gpu = available_gpus[0]
 device_name = f"cuda:{first_gpu}"
 
-
 print(f"Using GPU {first_gpu}: {torch.cuda.get_device_name(first_gpu)}")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 
-
-# OR Option 2: Manual device placement (if you prefer explicit control)
+# Manual device placement
 model = AutoModelForCausalLM.from_pretrained(
      MODEL_PATH,
      torch_dtype=torch.float16,
      low_cpu_mem_usage=True
  ).to(device_name)
 
-
- 
 pipe = pipeline(
      "text-generation",
      model=model,
@@ -49,7 +45,12 @@ llm = HuggingFacePipeline(pipeline=pipe)
 loader = TextLoader("my_docs.txt")
 documents = loader.load()
 
-text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+# Fix the chunk size warning by using a more appropriate text splitter
+text_splitter = CharacterTextSplitter(
+    chunk_size=500, 
+    chunk_overlap=100,
+    separator="\n\n"  # Add separator to help with chunking
+)
 split_docs = text_splitter.split_documents(documents)
 
 # ==== 3. Create embeddings and vector store ====
