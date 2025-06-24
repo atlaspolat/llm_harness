@@ -69,7 +69,15 @@ vectorstore = FAISS.from_documents(split_docs, embedding=embedding_model)
 retriever = vectorstore.as_retriever()
 rag_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-# ==== 5. Ask your question ====
-question = input("Ask a question: ")
-response = rag_chain.run(question)
-print("\nAnswer:", response)
+
+
+while True:
+    # Check if the user wants to exit
+    user_input = input("Type 'exit' to quit or sk a question: ")
+    if user_input.lower() == 'exit':
+        print("Exiting the program.")
+        break
+
+    
+    response = rag_chain.run(user_input)
+    print("\nAnswer:", response)
