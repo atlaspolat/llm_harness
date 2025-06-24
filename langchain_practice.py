@@ -5,7 +5,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter  # Better text splitter
 from langchain_community.vectorstores import FAISS  # Use FAISS instead of Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.chains import ConversationalRetrievalQA
+from langchain.chains import RetrievalQA
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 
@@ -92,10 +92,10 @@ PROMPT = PromptTemplate(
     input_variables=["context", "question"]
 )
 
-rag_chain = ConversationalRetrievalQA.from_llm(
+rag_chain = RetrievalQA.from_chain_type(
     llm=llm, 
+    chain_type="stuff",
     retriever=retriever,
-    memory=memory,
     return_source_documents=True  # This helps debug what context is being used
 )
 
@@ -105,13 +105,15 @@ while True:
     if user_input.lower() == 'exit':
         print("Exiting the program.")
         break    # Use invoke instead of run (updated API)
-    result = rag_chain.invoke({"question": user_input})
+    result = rag_chain.invoke({"query": user_input})
     
     print("\n" + "="*50)
     print("QUESTION:", user_input)
     print("="*50)
-    print("ANSWER:", result["answer"])
+    print("ANSWER:", result["result"])
     print("="*50)
+      # Manually add to conversation memory
+    memory.save_context({"input": user_input}, {"output": result["result"]})
     
     # Show conversation history
     print("CONVERSATION HISTORY:")
