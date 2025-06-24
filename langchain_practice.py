@@ -6,6 +6,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter  # Better tex
 from langchain_community.vectorstores import FAISS  # Use FAISS instead of Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
 
 # ==== 1. Load your local Hugging Face model with GPU support ====
 MODEL_PATH = "models/Qwen/Qwen3-8B"
@@ -65,19 +66,53 @@ embedding_model = HuggingFaceEmbeddings(
 # Use FAISS instead of Chroma
 vectorstore = FAISS.from_documents(split_docs, embedding=embedding_model)
 
-# ==== 4. Set up RAG chain ====
-retriever = vectorstore.as_retriever()
-rag_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+# ==== 4. Set up RAG chain with better configuration ====
+retriever = vectorstore.as_retriever(
+    search_kwargs={"k": 3}  # Limit to top 3 most relevant chunks
+)
 
 
 
+# Create a custom prompt template
+prompt_template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+{context}
+
+Question: {question}
+Answer:"""
+
+PROMPT = PromptTemplate(
+    template=prompt_template, 
+    input_variables=["context", "question"]
+)
+
+rag_chain = RetrievalQA.from_chain_type(
+    llm=llm, 
+    chain_type="stuff",
+    retriever=retriever,
+    chain_type_kwargs={"prompt": PROMPT},
+    return_source_documents=True  # This helps debug what context is being used
+)
+
+# ==== 5. Question-answering loop ====
 while True:
-    # Check if the user wants to exit
-    user_input = input("Type 'exit' to quit or sk a question: ")
+    user_input = input("Type 'exit' to quit or ask a question: ")
     if user_input.lower() == 'exit':
         print("Exiting the program.")
         break
 
+    # Use invoke instead of run (updated API)
+    result = rag_chain.invoke({"query": user_input})
     
-    response = rag_chain.run(user_input)
-    print("\nAnswer:", response)
+    print("\n" + "="*50)
+    print("QUESTION:", user_input)
+    print("="*50)
+    print("ANSWER:", result["result"])
+    print("="*50)
+    
+    # Optionally show source documents for debugging
+    if result.get("source_documents"):
+        print("SOURCES USED:")
+        for i, doc in enumerate(result["source_documents"]):
+            print(f"Source {i+1}: {doc.page_content[:100]}...")
+        print("="*50)
