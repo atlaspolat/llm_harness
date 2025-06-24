@@ -49,7 +49,7 @@ documents = loader.load()
 text_splitter = CharacterTextSplitter(
     chunk_size=500, 
     chunk_overlap=100,
-    separator="\n\n"  # Add separator to help with chunking
+    separator="\n"  # Add separator to help with chunking
 )
 split_docs = text_splitter.split_documents(documents)
 
