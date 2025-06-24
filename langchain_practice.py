@@ -72,11 +72,11 @@ retriever = vectorstore.as_retriever(
     search_kwargs={"k": 3}  # Limit to top 3 most relevant chunks
 )
 
-# Create conversation memory
+# Create conversation memory (deprecated but keeping for now)
 memory = ConversationBufferMemory(
     memory_key="chat_history",
     return_messages=True,
-    output_key="answer"
+    output_key="result"  # Changed from "answer" to "result"
 )
 
 # Create a custom prompt template
@@ -104,7 +104,9 @@ while True:
     user_input = input("Type 'exit' to quit or ask a question: ")
     if user_input.lower() == 'exit':
         print("Exiting the program.")
-        break    # Use invoke instead of run (updated API)
+        break
+    
+    # Use invoke instead of run (updated API)
     result = rag_chain.invoke({"query": user_input})
     
     print("\n" + "="*50)
@@ -112,8 +114,9 @@ while True:
     print("="*50)
     print("ANSWER:", result["result"])
     print("="*50)
-      # Manually add to conversation memory
-    memory.save_context({"input": user_input}, {"output": result["result"]})
+    
+    # Manually add to conversation memory
+    memory.save_context({"input": user_input}, {"result": result["result"]})
     
     # Show conversation history
     print("CONVERSATION HISTORY:")
