@@ -79,23 +79,26 @@ memory = ConversationBufferMemory(
     output_key="result"  # Changed from "answer" to "result"
 )
 
-# Create a custom prompt template
+# Create a custom prompt template that includes chat history
 prompt_template = """Use the following pieces of context and conversation history to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
-{context}
+Context: {context}
+
+Chat History: {chat_history}
 
 Question: {question}
 Answer:"""
 
 PROMPT = PromptTemplate(
     template=prompt_template, 
-    input_variables=["context", "question"]
+    input_variables=["context", "chat_history", "question"]
 )
 
 rag_chain = RetrievalQA.from_chain_type(
     llm=llm, 
     chain_type="stuff",
     retriever=retriever,
+    chain_type_kwargs={"prompt": PROMPT},
     return_source_documents=True  # This helps debug what context is being used
 )
 
@@ -105,9 +108,25 @@ while True:
     if user_input.lower() == 'exit':
         print("Exiting the program.")
         break
+      # Get chat history for the prompt
+    chat_history_str = ""
+    chat_history = memory.chat_memory.messages
+    for i in range(0, len(chat_history), 2):
+        if i + 1 < len(chat_history):
+            chat_history_str += f"Human: {chat_history[i].content}\n"
+            chat_history_str += f"Assistant: {chat_history[i+1].content}\n"
     
-    # Use invoke instead of run (updated API)
-    result = rag_chain.invoke({"query": user_input})
+    # Get context from retriever
+    docs = retriever.get_relevant_documents(user_input)
+    context = "\n".join([doc.page_content for doc in docs])
+    
+    # Use invoke with all required variables
+    result = rag_chain.invoke({
+        "query": user_input,
+        "context": context,
+        "chat_history": chat_history_str,
+        "question": user_input
+    })
     
     print("\n" + "="*50)
     print("QUESTION:", user_input)
