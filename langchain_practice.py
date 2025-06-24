@@ -1,14 +1,14 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from langchain_huggingface import HuggingFacePipeline  # Updated import
+from langchain_huggingface import HuggingFacePipeline
 from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings  # Updated import
+from langchain.text_splitter import RecursiveCharacterTextSplitter  # Better text splitter
+from langchain_community.vectorstores import FAISS  # Use FAISS instead of Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 
 # ==== 1. Load your local Hugging Face model with GPU support ====
-MODEL_PATH = "models/Qwen/Qwen3-8B"  # folder with the model files
+MODEL_PATH = "models/Qwen/Qwen3-8B"
 
 # Find the first available GPU
 available_gpus = [i for i in range(torch.cuda.device_count()) if torch.cuda.get_device_properties(i).total_memory > 0]
@@ -24,7 +24,6 @@ print(f"Using GPU {first_gpu}: {torch.cuda.get_device_name(first_gpu)}")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 
-# Manual device placement
 model = AutoModelForCausalLM.from_pretrained(
      MODEL_PATH,
      torch_dtype=torch.float16,
@@ -45,22 +44,26 @@ llm = HuggingFacePipeline(pipeline=pipe)
 loader = TextLoader("my_docs.txt")
 documents = loader.load()
 
-# Fix the chunk size warning by using a more appropriate text splitter
-text_splitter = CharacterTextSplitter(
-    chunk_size=500, 
+# Use RecursiveCharacterTextSplitter for better chunking
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
     chunk_overlap=100,
-    separator="\n"  # Add separator to help with chunking
+    separators=["\n\n", "\n", " ", ""]
 )
 split_docs = text_splitter.split_documents(documents)
 
+print(f"Created {len(split_docs)} chunks")
+for i, doc in enumerate(split_docs[:3]):
+    print(f"Chunk {i+1} size: {len(doc.page_content)} characters")
+
 # ==== 3. Create embeddings and vector store ====
-# Assign embedding model to the same GPU
 embedding_model = HuggingFaceEmbeddings(
     model_name="models/all-MiniLM-L6-v2",
-    model_kwargs={'device': device_name}  # Assign to first available GPU
+    model_kwargs={'device': device_name}
 )
 
-vectorstore = Chroma.from_documents(split_docs, embedding=embedding_model)
+# Use FAISS instead of Chroma
+vectorstore = FAISS.from_documents(split_docs, embedding=embedding_model)
 
 # ==== 4. Set up RAG chain ====
 retriever = vectorstore.as_retriever()
