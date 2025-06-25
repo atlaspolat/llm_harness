@@ -44,8 +44,8 @@ print(f"[GPU {gpu_id}] Model loaded! Starting to process questions from queue...
 # Define the system prompt
 turkish_instruction = "Parçaya ve soruya göre hangi seçenek doğrudur? Cevabınız sadece seçeneğin indeksine karşılık gelen tek bir rakam (0, 1, 2, 3 veya 4) olmalıdır."
     
-system_prompt_content = f"""You are an AI assistant. That would help users answer questions based on provided passages and choices. The language of the questions and passages is Turkish. And you should provide your answer as a single digit corresponding to the index of the correct choice.
-{turkish_instruction}
+system_prompt_content = """You are an AI assistant. That would help users answer questions based on provided passages and choices. The language of the questions and passages is Turkish. And you should provide your answer as a single digit corresponding to the index of the correct choice.
+""" + turkish_instruction + """
 Analyze the question and provide your thinking process before giving the final answer as a single digit.
 
 Here is an example of the input format you will receive and the thinking process/output format you should follow:
@@ -76,11 +76,11 @@ There is the image code: <IMG-xxx> which is a placeholder for the image you will
 
 How to use the tools:
 
-ToolCall: { "tool": "imageqa",
-            "args": {
+ToolCall: {{ "tool": "imageqa",
+            "args": {{
                 "image_code": "<IMG-002>",
-                 "questions": "<question_text>"   }
-}
+                 "questions": "<question_text>"   }}
+}}
 
 """
 
