@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, Blip2Processor, Blip2ForConditionalGeneration
 import torch
 import re
 
@@ -90,8 +90,8 @@ ToolCall: {{ "tool": "imageqa",
 image_model_path = "models/Salesforce/blip2-flan-t5-xl"  # Path to your local image model
 
 # load the model to the specified GPU
-image_tokenizer = AutoTokenizer.from_pretrained(image_model_path, trust_remote_code=True)
-image_model = AutoModelForCausalLM.from_pretrained(
+image_processor = Blip2Processor.from_pretrained(image_model_path, trust_remote_code=True)
+image_model = Blip2ForConditionalGeneration.from_pretrained(
         image_model_path,
         torch_dtype=torch.float16,
         device_map={"": f"cuda:{1}"},  # Force all layers to this specific GPU
